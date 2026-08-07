@@ -1,0 +1,26 @@
+{
+  "name": "@ecoswift/http",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Redis-backed distributed rate limiting and API gateway middleware for Ecoswift Bank",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecoswift/cache": "workspace:*",
+    "@ecoswift/shared": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/throttler": "^6.3.0",
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

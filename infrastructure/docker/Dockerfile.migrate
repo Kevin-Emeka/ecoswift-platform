@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+# One-shot migration + seed runner — the container `docker-compose.yml`'s
+# `migrate` service builds and runs to completion before any app service
+# starts (via `depends_on: condition: service_completed_successfully`).
+# Not parameterized like the other two Dockerfiles since there's only ever
+# one thing to run here: `prisma migrate deploy` then `prisma db seed`
+# against the shared schema every service's database depends on.
+#
+# pnpm is vendored, not fetched via corepack — see Dockerfile.nestjs's
+# comment on why (network-restricted sandboxes TLS-intercept the fetch).
+# Vendored here too since this image's CMD itself invokes `pnpm` at
+# container runtime, not just at build time.
+
+FROM node:20-alpine AS base
+COPY infrastructure/docker/vendor/pnpm /opt/pnpm
+RUN ln -s /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && chmod +x /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
+WORKDIR /app
+
+COPY . .
+COPY infrastructure/docker/vendor/pnpm-store /pnpm-store
+RUN echo "store-dir=/pnpm-store" >> .npmrc && pnpm install --frozen-lockfile --offline --ignore-scripts
+
+# `prisma generate`/`prisma migrate deploy` fetch their platform engine
+# binaries from binaries.prisma.sh on first use — separate CDN, same
+# TLS-interception problem as pnpm above, and worse: even with the binary
+# already cached locally, Prisma's fetch-engine still hits the network to
+# re-verify its checksum. `PRISMA_QUERY_ENGINE_LIBRARY`/
+# `PRISMA_SCHEMA_ENGINE_BINARY` sidestep that whole mechanism — they tell
+# Prisma to use these exact local files with no fetch or verification at
+# all. Both stay set at container runtime too (not just during this build):
+# `prisma migrate deploy` (schema engine) and `prisma db seed` (query
+# engine, via the generated client) both run when this image's CMD
+# executes, not during the build.
+COPY infrastructure/docker/vendor/prisma-engines-direct /opt/prisma-engines
+RUN chmod +x /opt/prisma-engines/*
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/opt/prisma-engines/libquery_engine-linux-musl-openssl-3.0.x.so.node
+ENV PRISMA_SCHEMA_ENGINE_BINARY=/opt/prisma-engines/schema-engine-linux-musl-openssl-3.0.x
+RUN pnpm --filter @ecoswift/database prisma:generate
+
+CMD ["sh", "-c", "pnpm db:deploy && pnpm db:seed"]

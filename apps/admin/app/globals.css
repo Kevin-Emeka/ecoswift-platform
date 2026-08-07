@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Ecoswift Bank — enterprise digital-bank palette */
+    --background: 210 40% 98%; /* #F8FAFC */
+    --foreground: 222 47% 8%; /* #0F172A */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 222 47% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 8%;
+    --primary: 221 71% 17%; /* #0B1F4D deep navy */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 221 83% 42%; /* #1D4ED8 royal blue */
+    --secondary-foreground: 210 40% 98%;
+    --accent: 214 32% 93%; /* neutral hover surface — see --brand-accent for the blue brand accent */
+    --accent-foreground: 222 47% 8%;
+    --brand-accent: 217 91% 60%; /* #2563EB */
+    --brand-accent-foreground: 210 40% 98%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* #64748B */
+    --destructive: 0 74% 48%; /* #DC2626 */
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 33%; /* #16A34A */
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%; /* #F59E0B */
+    --warning-foreground: 222 47% 8%;
+    --border: 214 32% 91%; /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 44% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 44% 9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 221 71% 24%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 222 30% 16%;
+    --accent-foreground: 210 40% 98%;
+    --brand-accent: 217 91% 65%;
+    --brand-accent-foreground: 222 47% 8%;
+    --muted: 222 33% 14%;
+    --muted-foreground: 215 20% 65%;
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 40%;
+    --success-foreground: 222 47% 8%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 8%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, #0b1f4d 0%, #14295e 45%, #1d4ed8 100%);
+  }
+  .shadow-premium {
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -8px rgb(15 23 42 / 0.08);
+  }
+  .dark .shadow-premium {
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  }
+  .card-lift {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -10px rgb(11 31 77 / 0.16);
+  }
+  .animate-in {
+    animation: fade-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes fade-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .skeleton-pulse {
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}

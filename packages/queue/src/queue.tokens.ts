@@ -1,0 +1,9 @@
+export const EMAIL_QUEUE = Symbol('EMAIL_QUEUE');
+export const SMS_QUEUE = Symbol('SMS_QUEUE');
+export const PUSH_QUEUE = Symbol('PUSH_QUEUE');
+export const RECEIPTS_QUEUE = Symbol('RECEIPTS_QUEUE');
+export const STATEMENTS_QUEUE = Symbol('STATEMENTS_QUEUE');
+export const AUDIT_LOGS_QUEUE = Symbol('AUDIT_LOGS_QUEUE');
+export const REPORTS_QUEUE = Symbol('REPORTS_QUEUE');
+export const TRANSFERS_QUEUE = Symbol('TRANSFERS_QUEUE');
+export const BULLMQ_CONNECTION = Symbol('BULLMQ_CONNECTION');

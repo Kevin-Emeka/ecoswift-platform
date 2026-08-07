@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+# Generic multi-stage build for any Next.js app in the monorepo.
+# Build with: docker build -f infrastructure/docker/Dockerfile.nextjs \
+#   --build-arg APP_NAME=admin -t ecoswift/admin .
+#
+# Deliberately does NOT use `turbo prune` — see Dockerfile.nestjs's comment
+# for why (it depends on `git ls-files`, which fails in a non-git
+# checkout). Full-monorepo copy + single install instead.
+#
+# pnpm is vendored, not fetched via corepack — see Dockerfile.nestjs's
+# comment on why (network-restricted sandboxes TLS-intercept the fetch).
+
+FROM node:20-alpine AS base
+COPY infrastructure/docker/vendor/pnpm /opt/pnpm
+RUN ln -s /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && chmod +x /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
+WORKDIR /app
+
+FROM base AS installer
+COPY . .
+COPY infrastructure/docker/vendor/pnpm-store /pnpm-store
+RUN echo "store-dir=/pnpm-store" >> .npmrc && pnpm install --frozen-lockfile --offline --ignore-scripts
+ENV NEXT_TELEMETRY_DISABLED=1
+# `turbo run build` (not plain `pnpm --filter X build`) so workspace deps
+# like @ecoswift/ui and @ecoswift/config get built first — see
+# Dockerfile.nestjs's comment on the same issue.
+ARG APP_NAME
+RUN pnpm exec turbo run build --filter="@ecoswift/${APP_NAME}"
+
+FROM node:20-alpine AS runner
+ARG APP_NAME
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=installer /app .
+USER nextjs
+WORKDIR /app/apps/${APP_NAME}
+EXPOSE 3000
+CMD ["node_modules/.bin/next", "start"]

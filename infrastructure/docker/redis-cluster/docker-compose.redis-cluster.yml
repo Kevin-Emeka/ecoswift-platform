@@ -1,0 +1,92 @@
+# Local Redis Cluster for testing @ecoswift/cache's cluster-mode code path
+# (REDIS_CLUSTER_ENABLED=true) end-to-end before it ever runs against a real
+# managed cluster in staging/production.
+#
+# Usage:
+#   docker compose -f infrastructure/docker/redis-cluster/docker-compose.redis-cluster.yml up -d
+#   # wait for redis-cluster-init to report success, then:
+#   REDIS_CLUSTER_ENABLED=true
+#   REDIS_CLUSTER_NODES=localhost:7001,localhost:7002,localhost:7003,localhost:7004,localhost:7005,localhost:7006
+#
+# This is deliberately a separate compose file from the root
+# docker-compose.yml, not a replacement for the single-node `redis` service
+# there — most local dev doesn't need cluster complexity; this exists
+# specifically to validate cluster-mode code before it reaches production.
+# 3 primaries + 3 replicas is the minimum topology that tolerates one node
+# failure per shard without losing write availability — the same topology
+# recommended for the real deployment (docs/infrastructure.md § Redis
+# Cluster).
+
+name: ecoswift-redis-cluster
+
+services:
+  redis-node-1:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7001:6379"]
+    volumes: ["redis_cluster_1:/data"]
+    networks: [redis-cluster-net]
+
+  redis-node-2:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7002:6379"]
+    volumes: ["redis_cluster_2:/data"]
+    networks: [redis-cluster-net]
+
+  redis-node-3:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7003:6379"]
+    volumes: ["redis_cluster_3:/data"]
+    networks: [redis-cluster-net]
+
+  redis-node-4:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7004:6379"]
+    volumes: ["redis_cluster_4:/data"]
+    networks: [redis-cluster-net]
+
+  redis-node-5:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7005:6379"]
+    volumes: ["redis_cluster_5:/data"]
+    networks: [redis-cluster-net]
+
+  redis-node-6:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --protected-mode no
+    ports: ["7006:6379"]
+    volumes: ["redis_cluster_6:/data"]
+    networks: [redis-cluster-net]
+
+  # One-shot job: waits for all 6 nodes, then forms the cluster (3 primaries,
+  # each with 1 replica) and exits. Re-running after the cluster already
+  # exists is safe — `--cluster create` is idempotent-refused, not
+  # destructive, if nodes already belong to a cluster.
+  redis-cluster-init:
+    image: redis:7-alpine
+    depends_on: [redis-node-1, redis-node-2, redis-node-3, redis-node-4, redis-node-5, redis-node-6]
+    networks: [redis-cluster-net]
+    entrypoint: >
+      sh -c "
+        sleep 5 &&
+        redis-cli --cluster create
+          redis-node-1:6379 redis-node-2:6379 redis-node-3:6379
+          redis-node-4:6379 redis-node-5:6379 redis-node-6:6379
+          --cluster-replicas 1 --cluster-yes
+      "
+
+networks:
+  redis-cluster-net:
+    driver: bridge
+
+volumes:
+  redis_cluster_1:
+  redis_cluster_2:
+  redis_cluster_3:
+  redis_cluster_4:
+  redis_cluster_5:
+  redis_cluster_6:

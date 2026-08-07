@@ -1,0 +1,26 @@
+{
+  "name": "@ecoswift/resilience",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Circuit breaker, retry, and idempotency frameworks for Ecoswift Bank",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecoswift/cache": "workspace:*",
+    "@ecoswift/utils": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "ioredis": "^5.4.2",
+    "opossum": "^8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/opossum": "^8.1.9",
+    "typescript": "^5.7.2"
+  }
+}

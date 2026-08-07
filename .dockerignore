@@ -1,0 +1,21 @@
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.next
+**/coverage
+**/.turbo
+.git
+.github
+.vscode
+docs
+*.md
+.env
+.env.*
+!.env.example
+
+# Vendored pnpm binary + content-addressable store, used by the Dockerfiles
+# instead of `corepack prepare` / a networked `pnpm install` — see the
+# "Docker network limitation" section of docs/deployment.md for why.
+!infrastructure/docker/vendor
+!infrastructure/docker/vendor/**

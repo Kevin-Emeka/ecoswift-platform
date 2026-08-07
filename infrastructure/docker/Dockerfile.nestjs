@@ -1,0 +1,76 @@
+# syntax=docker/dockerfile:1
+# Generic multi-stage build for any NestJS app/service in the monorepo.
+# Build with: docker build -f infrastructure/docker/Dockerfile.nestjs \
+#   --build-arg APP_PATH=apps/api --build-arg APP_NAME=api -t ecoswift/api .
+#
+# Deliberately does NOT use `turbo prune` (the previous approach): prune
+# relies on `git ls-files` to determine each workspace package's file set,
+# which fails outright in a checkout that isn't a git repository — a real
+# possibility for this kind of environment (an exported tarball, a fresh
+# `docker build` context copied without `.git`). Copying the full monorepo
+# (filtered by `.dockerignore`) and installing once is slightly less
+# layer-cache-efficient but works unconditionally, and this codebase is
+# small enough that the tradeoff is a non-issue. `prisma generate` is run
+# explicitly here rather than relying on a committed
+# `packages/database/generated/client` — regenerating from
+# `prisma/schema.prisma` at build time is the standard, robust approach.
+#
+# pnpm itself is vendored from `infrastructure/docker/vendor/pnpm` rather
+# than fetched via `corepack prepare pnpm@9.15.0` — some network-restricted
+# environments (see docs/deployment.md's "Docker network limitation"
+# section) TLS-intercept ALL outbound HTTPS from inside containers with no
+# trusted CA installed, which makes corepack's fetch from
+# registry.npmjs.org fail outright. Installing from a pre-populated local
+# store (`infrastructure/docker/vendor/pnpm-store`) with `--offline`
+# sidesteps the same problem for `pnpm install` itself.
+
+FROM node:20-alpine AS base
+COPY infrastructure/docker/vendor/pnpm /opt/pnpm
+RUN ln -s /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && chmod +x /opt/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
+WORKDIR /app
+
+# --- Install dependencies + build for the whole monorepo ---
+FROM base AS installer
+COPY . .
+COPY infrastructure/docker/vendor/pnpm-store /pnpm-store
+RUN echo "store-dir=/pnpm-store" >> .npmrc && pnpm install --frozen-lockfile --offline --ignore-scripts
+
+# `prisma generate` fetches its platform engine binaries from
+# binaries.prisma.sh on first use — separate CDN, same TLS-interception
+# problem as pnpm above, and worse: even with a binary already cached
+# locally, Prisma's fetch-engine still hits the network to re-verify its
+# checksum — and it validates the schema-engine too, even though a plain
+# `generate` never runs migrations. `PRISMA_QUERY_ENGINE_LIBRARY`/
+# `PRISMA_SCHEMA_ENGINE_BINARY` sidestep that whole mechanism — they tell
+# Prisma to use these exact local files with no fetch or verification at
+# all. `prisma generate` then bundles the query engine into the generated
+# client output directory, which is what the runner stage (and every
+# service's PrismaClient at runtime) actually loads from — so the
+# override only needs to be set for this one build step.
+COPY infrastructure/docker/vendor/prisma-engines-direct /opt/prisma-engines
+RUN chmod +x /opt/prisma-engines/*
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/opt/prisma-engines/libquery_engine-linux-musl-openssl-3.0.x.so.node
+ENV PRISMA_SCHEMA_ENGINE_BINARY=/opt/prisma-engines/schema-engine-linux-musl-openssl-3.0.x
+RUN pnpm --filter @ecoswift/database prisma:generate
+
+# `pnpm --filter X build` (as opposed to `turbo run build --filter=X`)
+# builds ONLY package X, with no awareness that X depends on
+# @ecoswift/database, @ecoswift/authz, etc. also being built first — this
+# app's own `dist/` would compile, but every workspace package it imports
+# would still be pointing at a `dist/` that was never generated. Turbo's
+# `^build` dependency graph (declared in turbo.json, the same one `pnpm
+# build` at the repo root uses) builds upstream workspace deps first.
+ARG APP_NAME
+RUN pnpm exec turbo run build --filter="@ecoswift/${APP_NAME}"
+
+# --- Minimal runtime image ---
+FROM node:20-alpine AS runner
+ARG APP_PATH
+ENV NODE_ENV=production
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
+COPY --from=installer /app .
+USER nestjs
+WORKDIR /app/${APP_PATH}
+EXPOSE 3000
+CMD ["node", "dist/main.js"]

@@ -1,0 +1,10 @@
+# Local development Prometheus scrape config. Every NestJS app/service
+# exposes health/metrics under /health; a dedicated /metrics endpoint will
+# be wired up (via @willsoto/nestjs-prometheus or similar) in a later phase.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'ecoswift-api'
+    static_configs:
+      - targets: ['api:3001']

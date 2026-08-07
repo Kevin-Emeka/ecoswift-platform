@@ -1,0 +1,342 @@
+name: ecoswift-platform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecoswift-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ecoswift_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecoswift-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: applies pending migrations, then seeds reference data
+  # (currencies, countries, roles/permissions, chart of accounts, account
+  # types, notification templates, the break-glass admin account, etc.).
+  # Every app/service below waits on this completing successfully before
+  # it starts — a fresh `docker compose up` never races the schema.
+  migrate:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.migrate
+    container_name: ecoswift-migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: api
+        APP_PATH: apps/api
+    container_name: ecoswift-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: auth-service
+        APP_PATH: services/auth-service
+    container_name: ecoswift-auth-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  account-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: account-service
+        APP_PATH: services/account-service
+    container_name: ecoswift-account-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3003:3003"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: notification-service
+        APP_PATH: services/notification-service
+    container_name: ecoswift-notification-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3004:3004"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3004/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  receipt-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: receipt-service
+        APP_PATH: services/receipt-service
+    container_name: ecoswift-receipt-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3005:3005"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3005/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: audit-service
+        APP_PATH: services/audit-service
+    container_name: ecoswift-audit-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3006
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3006:3006"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3006/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  email-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: email-service
+        APP_PATH: services/email-service
+    container_name: ecoswift-email-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3007
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3007:3007"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3007/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  sms-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nestjs
+      args:
+        APP_NAME: sms-service
+        APP_PATH: services/sms-service
+    container_name: ecoswift-sms-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3008
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ecoswift_dev
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3008:3008"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3008/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nextjs
+      args:
+        APP_NAME: admin
+    container_name: ecoswift-admin
+    restart: unless-stopped
+    environment:
+      PORT: 3100
+    ports:
+      - "3100:3100"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+
+  customer-portal:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nextjs
+      args:
+        APP_NAME: customer-portal
+    container_name: ecoswift-customer-portal
+    restart: unless-stopped
+    environment:
+      PORT: 3200
+    ports:
+      - "3200:3200"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ecoswift-nginx
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      admin:
+        condition: service_started
+      customer-portal:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:

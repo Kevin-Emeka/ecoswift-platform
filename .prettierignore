@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.next
+out
+coverage
+playwright-report
+.turbo
+pnpm-lock.yaml
+prisma/generated

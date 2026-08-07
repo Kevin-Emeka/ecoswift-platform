@@ -1,0 +1,34 @@
+{
+  "name": "@ecoswift/observability",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Health checks, metrics, distributed tracing, and correlation/request ID middleware shared across every Ecoswift Bank app and service",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecoswift/cache": "workspace:*",
+    "@ecoswift/shared": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/terminus": "^10.2.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.53.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
+    "@opentelemetry/resources": "^1.29.0",
+    "@opentelemetry/sdk-node": "^0.56.0",
+    "@opentelemetry/semantic-conventions": "^1.28.0",
+    "ioredis": "^5.4.2",
+    "prom-client": "^15.1.3",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

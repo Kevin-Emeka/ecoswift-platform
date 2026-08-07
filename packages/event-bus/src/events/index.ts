@@ -1,0 +1,133 @@
+export * from './customer.events';
+export * from './account.events';
+export * from './transfer.events';
+export * from './loan.events';
+export * from './savings.events';
+export * from './reporting.events';
+export * from './notification.events';
+export * from './audit.events';
+export * from './identity-auth.events';
+export * from './authorization.events';
+export * from './security.events';
+
+import { CUSTOMER_REGISTERED, EMAIL_VERIFIED } from './customer.events';
+import { ACCOUNT_OPENED, ACCOUNT_STATUS_CHANGED } from './account.events';
+import {
+  TRANSFER_STARTED,
+  TRANSFER_COMPLETED,
+  TRANSFER_FAILED,
+  DEPOSIT_POSTED,
+  WITHDRAWAL_POSTED,
+} from './transfer.events';
+import { LOAN_APPROVED, LOAN_REJECTED } from './loan.events';
+import { SAVINGS_CREATED, INTEREST_POSTED } from './savings.events';
+import { RECEIPT_GENERATED, STATEMENT_GENERATED } from './reporting.events';
+import { NOTIFICATION_QUEUED, NOTIFICATION_SENT } from './notification.events';
+import { AUDIT_RECORDED } from './audit.events';
+import {
+  USER_REGISTERED,
+  EMAIL_VERIFICATION_REQUESTED,
+  PHONE_VERIFICATION_REQUESTED,
+  PHONE_VERIFIED,
+  LOGIN_SUCCEEDED,
+  LOGIN_FAILED,
+  LOGOUT_SUCCEEDED,
+  PASSWORD_CHANGED,
+  PASSWORD_RESET_REQUESTED,
+  PASSWORD_RESET_COMPLETED,
+  SESSION_CREATED,
+  SESSION_REVOKED,
+} from './identity-auth.events';
+import {
+  ROLE_CREATED,
+  ROLE_UPDATED,
+  ROLE_DELETED,
+  PERMISSION_GRANTED_TO_ROLE,
+  PERMISSION_REVOKED_FROM_ROLE,
+  ROLE_ASSIGNED_TO_USER,
+  ROLE_REVOKED_FROM_USER,
+  ROLE_ASSIGNMENT_REQUESTED,
+  ROLE_ASSIGNMENT_APPROVED,
+  ROLE_ASSIGNMENT_REJECTED,
+  API_KEY_CREATED,
+  API_KEY_REVOKED,
+  FEATURE_FLAG_TOGGLED,
+  AUTHORIZATION_DENIED,
+} from './authorization.events';
+import {
+  MFA_ENROLLED,
+  MFA_DISABLED,
+  MFA_CHALLENGE_SUCCEEDED,
+  MFA_CHALLENGE_FAILED,
+  STEP_UP_COMPLETED,
+  DEVICE_REGISTERED,
+  DEVICE_REVOKED,
+  SUSPICIOUS_SESSION_DETECTED,
+  FRAUD_SIGNAL_DETECTED,
+} from './security.events';
+
+/**
+ * The full event catalog, in one place — used for documentation generation
+ * and as a runtime source of truth for "is this a known event type"
+ * validation. Cross-referenced against the business-level catalog in
+ * docs/events.md (Phase 2A) — see that document's Phase 2C/3A addenda for
+ * name mappings (e.g. `TRANSFER_STARTED` here realizes Phase 2A's
+ * `TransferInitiated`).
+ */
+export const EVENT_CATALOG = [
+  CUSTOMER_REGISTERED,
+  EMAIL_VERIFIED,
+  ACCOUNT_OPENED,
+  ACCOUNT_STATUS_CHANGED,
+  TRANSFER_STARTED,
+  TRANSFER_COMPLETED,
+  TRANSFER_FAILED,
+  DEPOSIT_POSTED,
+  WITHDRAWAL_POSTED,
+  LOAN_APPROVED,
+  LOAN_REJECTED,
+  SAVINGS_CREATED,
+  INTEREST_POSTED,
+  RECEIPT_GENERATED,
+  STATEMENT_GENERATED,
+  NOTIFICATION_QUEUED,
+  NOTIFICATION_SENT,
+  AUDIT_RECORDED,
+  USER_REGISTERED,
+  EMAIL_VERIFICATION_REQUESTED,
+  PHONE_VERIFICATION_REQUESTED,
+  PHONE_VERIFIED,
+  LOGIN_SUCCEEDED,
+  LOGIN_FAILED,
+  LOGOUT_SUCCEEDED,
+  PASSWORD_CHANGED,
+  PASSWORD_RESET_REQUESTED,
+  PASSWORD_RESET_COMPLETED,
+  SESSION_CREATED,
+  SESSION_REVOKED,
+  ROLE_CREATED,
+  ROLE_UPDATED,
+  ROLE_DELETED,
+  PERMISSION_GRANTED_TO_ROLE,
+  PERMISSION_REVOKED_FROM_ROLE,
+  ROLE_ASSIGNED_TO_USER,
+  ROLE_REVOKED_FROM_USER,
+  ROLE_ASSIGNMENT_REQUESTED,
+  ROLE_ASSIGNMENT_APPROVED,
+  ROLE_ASSIGNMENT_REJECTED,
+  API_KEY_CREATED,
+  API_KEY_REVOKED,
+  FEATURE_FLAG_TOGGLED,
+  AUTHORIZATION_DENIED,
+  MFA_ENROLLED,
+  MFA_DISABLED,
+  MFA_CHALLENGE_SUCCEEDED,
+  MFA_CHALLENGE_FAILED,
+  STEP_UP_COMPLETED,
+  DEVICE_REGISTERED,
+  DEVICE_REVOKED,
+  SUSPICIOUS_SESSION_DETECTED,
+  FRAUD_SIGNAL_DETECTED,
+] as const;
+
+export type EventCatalogType = (typeof EVENT_CATALOG)[number];

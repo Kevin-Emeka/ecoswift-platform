@@ -1,0 +1,24 @@
+{
+  "name": "@ecoswift/queue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Message queue abstraction (BullMQ), background worker framework, job scheduler, and the named Ecoswift Bank queues",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecoswift/cache": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "bullmq": "^5.34.1",
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
