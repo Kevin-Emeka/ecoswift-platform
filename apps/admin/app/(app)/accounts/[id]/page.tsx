@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { Ban, CircleDollarSign, Lock, Moon, ShieldOff, Snowflake, Unlock } from 'lucide-react';
+import { Ban, CheckCircle2, CircleDollarSign, Lock, Moon, ShieldOff, Snowflake, Unlock } from 'lucide-react';
 import {
   Alert,
   AlertDescription,
@@ -26,6 +26,7 @@ import {
   useToast,
 } from '@ecoswift/ui';
 import {
+  useActivateAccount,
   useCloseAccount,
   useCreditAccount,
   useFreezeAccount,
@@ -189,6 +190,7 @@ export default function AccountDetailPage() {
   const { data: account, isLoading, isError, error, refetch } = useStaffAccount(accountId);
 
   const freeze = useFreezeAccount(accountId);
+  const activate = useActivateAccount(accountId);
   const unfreeze = useUnfreezeAccount(accountId);
   const close = useCloseAccount(accountId);
   const restrict = useRestrictAccount(accountId);
@@ -243,6 +245,20 @@ export default function AccountDetailPage() {
           <CardTitle className="text-base">Account actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
+          {account.status === 'PENDING_ACTIVATION' && (
+            <ActionDialog
+              trigger={
+                <Button>
+                  <CheckCircle2 className="h-4 w-4" /> Activate
+                </Button>
+              }
+              title="Activate this account"
+              description="Reviews and approves this newly-opened account, making it usable. Only staff can do this — self-service activation was removed."
+              confirmLabel="Activate"
+              mutation={activate}
+              onDone={refetch}
+            />
+          )}
           <CreditAccountDialog mutation={credit} currencyCode={account.currencyCode} onDone={refetch} />
           <ActionDialog
             trigger={

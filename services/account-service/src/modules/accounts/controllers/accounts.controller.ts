@@ -59,13 +59,13 @@ export class AccountsController {
 
   @Post(':accountId/activate')
   @RequirePermissions('accounts:update')
-  @ApiOperation({ summary: 'Activate a pending account — self-service for the owning customer, or staff holding accounts:close' })
+  @ApiOperation({ summary: 'Activate a pending account — staff only (a newly-opened account is not usable until reviewed and activated by staff)' })
   async activate(
     @CurrentUser() user: AuthenticatedUser,
     @Param('accountId') accountId: string,
     @Body() dto: AccountStatusActionDto,
   ) {
-    await this.assertOwnerOrStaff(user, accountId);
+    this.assertStaff(user);
     return this.accountStatusService.transition(accountId, 'ACTIVE', this.actorFor(user), dto.reason);
   }
 

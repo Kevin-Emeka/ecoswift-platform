@@ -35,6 +35,10 @@ function useAccountStatusMutation(fn: typeof accountsApi.unfreezeAccount, accoun
   });
 }
 
+export function useActivateAccount(accountId: string) {
+  return useAccountStatusMutation(accountsApi.activateAccount, accountId);
+}
+
 export function useFreezeAccount(accountId: string) {
   return useAccountStatusMutation(accountsApi.freezeAccount, accountId);
 }

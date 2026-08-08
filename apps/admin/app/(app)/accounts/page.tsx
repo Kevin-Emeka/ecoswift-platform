@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import {
   Alert,
@@ -31,9 +32,11 @@ import { ApiClientError } from '../../../lib/api/http-client';
 const STATUS_OPTIONS = ['ALL', 'PENDING_ACTIVATION', 'ACTIVE', 'FROZEN', 'DORMANT', 'CLOSED', 'RESTRICTED'];
 
 export default function AccountsPage() {
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status');
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState('');
-  const [status, setStatus] = React.useState('ALL');
+  const [status, setStatus] = React.useState(initialStatus && STATUS_OPTIONS.includes(initialStatus) ? initialStatus : 'ALL');
   const limit = 20;
 
   const { data, isLoading, isError, error } = useStaffAccounts({

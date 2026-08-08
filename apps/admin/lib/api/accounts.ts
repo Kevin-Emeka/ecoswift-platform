@@ -30,6 +30,7 @@ function statusAction(action: string) {
     });
 }
 
+export const activateAccount = statusAction('activate');
 export const freezeAccount = statusAction('freeze');
 export const unfreezeAccount = statusAction('unfreeze');
 export const closeAccount = statusAction('close');
