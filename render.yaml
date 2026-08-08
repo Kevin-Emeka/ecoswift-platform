@@ -13,7 +13,7 @@ envVarGroups:
       - key: REDIS_URL
         sync: false
       - key: REDIS_TLS_ENABLED
-        value: "true"
+        value: 'true'
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -25,7 +25,7 @@ envVarGroups:
       - key: SMTP_HOST
         value: smtp.resend.com
       - key: SMTP_PORT
-        value: "587"
+        value: '587'
       - key: SMTP_USER
         value: resend
       - key: SMTP_PASSWORD
@@ -56,7 +56,12 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/account-service
+    # db:seed here (only on this one service) keeps prisma/seed.ts's
+    # reference data — including notification templates — in sync with
+    # production on every deploy. Safe to run repeatedly: every seed
+    # function is an upsert (see seed.ts), so this never touches an
+    # existing admin password or duplicates rows.
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm db:seed && pnpm exec turbo run build --filter=@ecoswift/account-service
     startCommand: node services/account-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:

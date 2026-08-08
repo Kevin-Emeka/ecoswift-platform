@@ -24,8 +24,12 @@ export class ReceiptGeneratorService {
       include: {
         transactionType: true,
         currency: true,
-        sourceAccount: { include: { customer: { include: { user: { include: { profile: true } } } } } },
-        destinationAccount: { include: { customer: { include: { user: { include: { profile: true } } } } } },
+        sourceAccount: {
+          include: { customer: { include: { user: { include: { profile: true } } } } },
+        },
+        destinationAccount: {
+          include: { customer: { include: { user: { include: { profile: true } } } } },
+        },
         transferRequest: { include: { destinationBeneficiary: true } },
       },
     });
@@ -37,8 +41,9 @@ export class ReceiptGeneratorService {
 
     const referenceNumber = await this.generateReferenceNumber();
     const senderName = this.holderName(transaction.sourceAccount);
+    const beneficiary = transaction.transferRequest?.destinationBeneficiary;
     const recipientName =
-      this.holderName(transaction.destinationAccount) ?? transaction.transferRequest?.destinationBeneficiary?.beneficiaryName;
+      this.holderName(transaction.destinationAccount) ?? beneficiary?.beneficiaryName;
 
     const content = {
       receiptReference: referenceNumber,
@@ -48,9 +53,18 @@ export class ReceiptGeneratorService {
       amount: transaction.amount.toString(),
       currencyCode: transaction.currency.isoCode,
       sourceAccountNumber: transaction.sourceAccount?.accountNumber,
-      destinationAccountNumber: transaction.destinationAccount?.accountNumber ?? transaction.transferRequest?.destinationBeneficiary?.accountNumber,
+      destinationAccountNumber:
+        transaction.destinationAccount?.accountNumber ?? beneficiary?.accountNumber,
       senderName,
       recipientName,
+      // Only populated for wire transfers (destinationBeneficiary present) —
+      // lets ReceiptPdfService render a full beneficiary-bank section for
+      // wires without needing a second content shape.
+      beneficiaryBankName: beneficiary?.bankName,
+      beneficiarySwiftBic: beneficiary?.swiftBic,
+      beneficiaryBankAddress: beneficiary?.bankAddress,
+      beneficiaryBankCountryCode: beneficiary?.bankCountryCode,
+      beneficiaryRoutingNumber: beneficiary?.routingNumber,
       description: transaction.description,
       sandbox: SANDBOX_TYPE_CODES.has(transaction.transactionType.code),
       issuedAt: new Date().toISOString(),
@@ -63,7 +77,11 @@ export class ReceiptGeneratorService {
     });
   }
 
-  private holderName(account: { customer: { user: { profile: { firstName: string; lastName: string } | null } } } | null): string | undefined {
+  private holderName(
+    account: {
+      customer: { user: { profile: { firstName: string; lastName: string } | null } };
+    } | null,
+  ): string | undefined {
     const profile = account?.customer.user.profile;
     return profile ? `${profile.firstName} ${profile.lastName}` : undefined;
   }
@@ -71,7 +89,9 @@ export class ReceiptGeneratorService {
   private async generateReferenceNumber(): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const candidate = `RCT${randomInt(100_000_000, 999_999_999)}`;
-      const existing = await this.prisma.receipt.findUnique({ where: { referenceNumber: candidate } });
+      const existing = await this.prisma.receipt.findUnique({
+        where: { referenceNumber: candidate },
+      });
       if (!existing) return candidate;
     }
     throw new Error('Could not generate a unique receipt reference number');

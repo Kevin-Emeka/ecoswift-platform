@@ -226,17 +226,40 @@ export class ExternalTransferService {
 
     await this.receiptsQueue.enqueue({ transactionId: result.transaction.id, format: 'JSON' });
 
+    const completedAt = result.transaction.completedAt ?? new Date();
+    const senderName = customerWithUser.user.profile
+      ? `${customerWithUser.user.profile.firstName} ${customerWithUser.user.profile.lastName}`
+      : account.accountNumber;
+
     await this.notificationService.sendEmail({
       customerId: account.customerId,
       toAddress: customerWithUser.user.email,
-      templateCode: 'TRANSFER_COMPLETED_EMAIL',
+      templateCode: 'WIRE_TRANSFER_COMPLETED_EMAIL',
       variables: {
         firstName: customerWithUser.user.profile?.firstName ?? 'there',
         amount: amount.toFixed(2),
         currencyCode: account.currency.isoCode,
-        sourceAccountNumber: account.accountNumber,
-        destinationAccountNumber: `${beneficiary.beneficiaryName} (${beneficiary.accountNumber})`,
+        senderName,
+        senderAccountNumber: account.accountNumber,
+        beneficiaryName: beneficiary.beneficiaryName,
+        beneficiaryAccountNumber: beneficiary.accountNumber,
+        beneficiaryBankName: beneficiary.bankName ?? '—',
+        swiftBic: beneficiary.swiftBic ?? '—',
+        beneficiaryBankAddress:
+          [beneficiary.bankAddress, beneficiary.bankCountryCode].filter(Boolean).join(', ') || '—',
+        routingNumber: beneficiary.routingNumber ?? '—',
+        purpose: description?.trim() || 'Not specified',
+        fee: '0.00',
+        totalDebited: amount.toFixed(2),
+        statusLabel: 'Completed',
         transactionReference: reference,
+        dateFormatted: completedAt.toLocaleDateString('en-US', {
+          timeZone: 'UTC',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        timeFormatted: `${completedAt.toLocaleTimeString('en-US', { timeZone: 'UTC' })} UTC`,
         portalUrl: this.configService.get<string>('customerPortalUrl') ?? 'http://localhost:3200',
         year: String(new Date().getFullYear()),
       },

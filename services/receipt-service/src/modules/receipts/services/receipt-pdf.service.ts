@@ -18,6 +18,12 @@ export interface ReceiptPdfData {
   description?: string;
   sandbox: boolean;
   transactionCreatedAt: string;
+  // Wire transfers only — see ReceiptGeneratorService's doc comment.
+  beneficiaryBankName?: string;
+  beneficiarySwiftBic?: string;
+  beneficiaryBankAddress?: string;
+  beneficiaryBankCountryCode?: string;
+  beneficiaryRoutingNumber?: string;
 }
 
 /**
@@ -71,6 +77,16 @@ export class ReceiptPdfService {
       ['Status', data.status],
     ];
     if (data.description) rows.push(['Description', data.description]);
+    if (data.beneficiaryBankName) rows.push(['Beneficiary Bank', data.beneficiaryBankName]);
+    if (data.beneficiarySwiftBic) rows.push(['SWIFT / BIC', data.beneficiarySwiftBic]);
+    if (data.beneficiaryBankAddress) {
+      const address = [data.beneficiaryBankAddress, data.beneficiaryBankCountryCode]
+        .filter(Boolean)
+        .join(', ');
+      rows.push(['Bank Address', address]);
+    }
+    if (data.beneficiaryRoutingNumber)
+      rows.push(['Routing / Sort Code', data.beneficiaryRoutingNumber]);
 
     let y = 180;
     for (const [label, value] of rows) {
