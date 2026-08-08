@@ -668,13 +668,6 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
             />
           </div>
 
-          <Alert variant="warning">
-            <AlertDescription>
-              International wires are simulated in this environment — no licensed payment rail is
-              connected, so funds are not actually delivered to a real external bank.
-            </AlertDescription>
-          </Alert>
-
           <Button
             type="submit"
             className="w-full"

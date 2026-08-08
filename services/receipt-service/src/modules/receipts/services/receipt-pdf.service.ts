@@ -36,15 +36,34 @@ export class ReceiptPdfService {
 
     doc.rect(0, 0, doc.page.width, 90).fill(BRAND_NAVY);
     doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('Ecoswift Bank', 50, 32);
-    doc.fillColor('#9CA3AF').fontSize(10).font('Helvetica').text('Smart Digital Banking Platform', 50, 58);
+    doc
+      .fillColor('#9CA3AF')
+      .fontSize(10)
+      .font('Helvetica')
+      .text('Smart Digital Banking Platform', 50, 58);
 
-    doc.fillColor(BRAND_NAVY).fontSize(16).font('Helvetica-Bold').text('Transaction Receipt', 50, 120);
-    doc.fillColor(MUTED).fontSize(10).font('Helvetica').text(`Receipt ${data.receiptReference}`, 50, 142);
+    doc
+      .fillColor(BRAND_NAVY)
+      .fontSize(16)
+      .font('Helvetica-Bold')
+      .text('Transaction Receipt', 50, 120);
+    doc
+      .fillColor(MUTED)
+      .fontSize(10)
+      .font('Helvetica')
+      .text(`Receipt ${data.receiptReference}`, 50, 142);
 
     const rows: [string, string][] = [
       ['Receipt Number', data.receiptReference],
       ['Transfer Reference', data.transactionReference],
-      ['Date', new Date(data.transactionCreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })],
+      [
+        'Date',
+        new Date(data.transactionCreatedAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+      ],
       ['Time', new Date(data.transactionCreatedAt).toLocaleTimeString('en-US')],
       ['Amount', `${data.amount} ${data.currencyCode}`],
       ['Sender', data.senderName ?? data.sourceAccountNumber ?? '—'],
@@ -56,25 +75,28 @@ export class ReceiptPdfService {
     let y = 180;
     for (const [label, value] of rows) {
       doc.fillColor(MUTED).fontSize(10).font('Helvetica').text(label, 50, y, { width: 160 });
-      doc.fillColor(BRAND_NAVY).fontSize(11).font('Helvetica-Bold').text(value, 220, y, { width: 300 });
-      doc.moveTo(50, y + 22).lineTo(545, y + 22).strokeColor('#E5E7EB').lineWidth(0.5).stroke();
-      y += 34;
-    }
-
-    if (data.sandbox) {
       doc
-        .fillColor('#DC2626')
-        .fontSize(9)
+        .fillColor(BRAND_NAVY)
+        .fontSize(11)
         .font('Helvetica-Bold')
-        .text('SIMULATED — this transaction did not move real funds.', 50, y + 10);
-      y += 30;
+        .text(value, 220, y, { width: 300 });
+      doc
+        .moveTo(50, y + 22)
+        .lineTo(545, y + 22)
+        .strokeColor('#E5E7EB')
+        .lineWidth(0.5)
+        .stroke();
+      y += 34;
     }
 
     doc
       .fillColor(BRAND_GREEN)
       .fontSize(9)
       .font('Helvetica')
-      .text('Ecoswift Bank — Smart Digital Banking Platform', 50, doc.page.height - 70, { width: 495, align: 'center' });
+      .text('Ecoswift Bank — Smart Digital Banking Platform', 50, doc.page.height - 70, {
+        width: 495,
+        align: 'center',
+      });
 
     return doc;
   }

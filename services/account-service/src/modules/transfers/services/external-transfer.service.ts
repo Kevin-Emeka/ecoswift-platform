@@ -146,7 +146,7 @@ export class ExternalTransferService {
       where: { code: 'TRANSFER_EXTERNAL' },
     });
     const reference = await this.generateTransactionReference();
-    const label = `[SIMULATED SETTLEMENT] ${description?.trim() || `Transfer to ${beneficiary.beneficiaryName}`}`;
+    const label = description?.trim() || `Transfer to ${beneficiary.beneficiaryName}`;
 
     const cashLedgerAccount = await this.prisma.ledgerAccount.findUniqueOrThrow({
       where: { code: CASH_LEDGER_ACCOUNT_CODE },
