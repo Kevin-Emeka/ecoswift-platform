@@ -45,7 +45,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/auth-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/auth-service
     startCommand: node services/auth-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -56,7 +56,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/account-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/account-service
     startCommand: node services/account-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -67,7 +67,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/notification-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/notification-service
     startCommand: node services/notification-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -78,7 +78,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/receipt-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/receipt-service
     startCommand: node services/receipt-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -89,7 +89,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/audit-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/audit-service
     startCommand: node services/audit-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -100,7 +100,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/email-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/email-service
     startCommand: node services/email-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
@@ -111,7 +111,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/sms-service run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm exec turbo run build --filter=@ecoswift/sms-service
     startCommand: node services/sms-service/dist/main.js
     healthCheckPath: /v1/health
     envVars:
