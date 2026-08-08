@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw } from 'lucide-react';
 import {
@@ -19,14 +20,24 @@ import {
   useToast,
 } from '@ecoswift/ui';
 import { useProfile, useUpdateProfile } from '../../../lib/hooks/use-profile';
-import { listCurrencies } from '../../../lib/api/reference-data';
+import { listCountries, listCurrencies } from '../../../lib/api/reference-data';
 import { ApiClientError } from '../../../lib/api/http-client';
+
+// Loaded client-side only — see the identical note on the register/transfers
+// pages' Combobox import: this is a first-use RSC/webpack module-id issue,
+// not a real coupling requirement.
+const Combobox = dynamic(() => import('@ecoswift/ui').then((mod) => mod.Combobox), { ssr: false });
 
 export default function ProfilePage() {
   const { data: profile, isLoading, isError, error, refetch, isRefetching } = useProfile();
   const updateProfile = useUpdateProfile();
   const { toast } = useToast();
   const { data: currencies } = useQuery({ queryKey: ['currencies'], queryFn: listCurrencies });
+  const { data: countries } = useQuery({ queryKey: ['countries'], queryFn: listCountries });
+  const countryOptions = React.useMemo(
+    () => (countries ?? []).map((c) => ({ value: c.isoCode, label: c.name, keywords: c.isoCode })),
+    [countries],
+  );
 
   const [form, setForm] = React.useState({
     addressLine1: '',
@@ -57,7 +68,12 @@ export default function ProfilePage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     try {
-      await updateProfile.mutateAsync(form);
+      // Omit blank optional fields rather than sending '' — addressCountryCode
+      // (and any future field validated with @Length/@Matches rather than
+      // just @IsString) rejects an empty string as an invalid value, even
+      // though the field is optional when left out entirely.
+      const payload = Object.fromEntries(Object.entries(form).filter(([, value]) => value !== ''));
+      await updateProfile.mutateAsync(payload);
       toast({ title: 'Profile updated', variant: 'success' });
     } catch (error) {
       toast({
@@ -180,14 +196,15 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="addressCountryCode">Country code</Label>
-                <Input
+                <Label htmlFor="addressCountryCode">Country</Label>
+                <Combobox
                   id="addressCountryCode"
-                  maxLength={2}
+                  options={countryOptions}
                   value={form.addressCountryCode}
-                  onChange={(e) =>
-                    setForm({ ...form, addressCountryCode: e.target.value.toUpperCase() })
-                  }
+                  onChange={(value) => setForm({ ...form, addressCountryCode: value })}
+                  placeholder="Select country"
+                  searchPlaceholder="Search countries…"
+                  emptyMessage="No country found."
                 />
               </div>
             </div>
