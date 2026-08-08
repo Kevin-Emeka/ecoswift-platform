@@ -2,14 +2,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  CheckCircle2,
-  Download,
-  FileText,
-  RefreshCw,
-} from 'lucide-react';
+import { CheckCircle2, Download, FileText, RefreshCw } from 'lucide-react';
 import {
   Alert,
   AlertDescription,
@@ -19,12 +12,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
   Input,
   Label,
   Select,
@@ -46,8 +33,6 @@ import {
   useAccount,
   useAccountTransactions,
   useActivateAccount,
-  useDeposit,
-  useWithdraw,
 } from '../../../../lib/hooks/use-accounts';
 import { useRequestStatement, useStatements } from '../../../../lib/hooks/use-statements';
 import { useAuth } from '../../../../lib/auth/auth-context';
@@ -56,84 +41,6 @@ import { getStatementDownloadUrl } from '../../../../lib/api/statements';
 import { downloadAuthenticated } from '../../../../lib/api/download';
 import { formatMoney, formatDateTime } from '../../../../lib/format';
 import { ApiClientError } from '../../../../lib/api/http-client';
-
-function TransactionDialog({
-  accountId,
-  mode,
-  trigger,
-}: {
-  accountId: string;
-  mode: 'deposit' | 'withdraw';
-  trigger: React.ReactNode;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [amount, setAmount] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const deposit = useDeposit(accountId);
-  const withdraw = useWithdraw(accountId);
-  const { toast } = useToast();
-  const mutation = mode === 'deposit' ? deposit : withdraw;
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    try {
-      await mutation.mutateAsync({ amount: Number(amount), description: description || undefined });
-      toast({
-        title: mode === 'deposit' ? 'Deposit simulated' : 'Withdrawal simulated',
-        variant: 'success',
-      });
-      setOpen(false);
-      setAmount('');
-      setDescription('');
-    } catch (error) {
-      toast({
-        title: 'Transaction failed',
-        description: error instanceof ApiClientError ? error.message : 'Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{mode === 'deposit' ? 'Make a deposit' : 'Make a withdrawal'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" loading={mutation.isPending}>
-              Confirm
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function AccountDetailPage() {
   const params = useParams<{ id: string }>();
@@ -240,28 +147,6 @@ export default function AccountDetailPage() {
             </p>
           )}
         </CardContent>
-        {account.status === 'ACTIVE' && (
-          <CardContent className="flex flex-wrap gap-3 pt-0">
-            <TransactionDialog
-              accountId={accountId}
-              mode="deposit"
-              trigger={
-                <Button variant="secondary">
-                  <ArrowDownToLine className="h-4 w-4" /> Deposit
-                </Button>
-              }
-            />
-            <TransactionDialog
-              accountId={accountId}
-              mode="withdraw"
-              trigger={
-                <Button variant="secondary">
-                  <ArrowUpFromLine className="h-4 w-4" /> Withdraw
-                </Button>
-              }
-            />
-          </CardContent>
-        )}
       </Card>
 
       <Card>
