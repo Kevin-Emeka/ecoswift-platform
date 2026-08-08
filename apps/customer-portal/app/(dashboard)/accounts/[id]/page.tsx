@@ -2,7 +2,14 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, Download, FileText } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle2,
+  Download,
+  FileText,
+  RefreshCw,
+} from 'lucide-react';
 import {
   Alert,
   AlertDescription,
@@ -35,7 +42,13 @@ import {
   TableRow,
   useToast,
 } from '@ecoswift/ui';
-import { useAccount, useAccountTransactions, useActivateAccount, useDeposit, useWithdraw } from '../../../../lib/hooks/use-accounts';
+import {
+  useAccount,
+  useAccountTransactions,
+  useActivateAccount,
+  useDeposit,
+  useWithdraw,
+} from '../../../../lib/hooks/use-accounts';
 import { useRequestStatement, useStatements } from '../../../../lib/hooks/use-statements';
 import { useAuth } from '../../../../lib/auth/auth-context';
 import { getReceiptDownloadUrl } from '../../../../lib/api/receipts';
@@ -65,7 +78,10 @@ function TransactionDialog({
     event.preventDefault();
     try {
       await mutation.mutateAsync({ amount: Number(amount), description: description || undefined });
-      toast({ title: mode === 'deposit' ? 'Deposit simulated' : 'Withdrawal simulated', variant: 'success' });
+      toast({
+        title: mode === 'deposit' ? 'Deposit simulated' : 'Withdrawal simulated',
+        variant: 'success',
+      });
       setOpen(false);
       setAmount('');
       setDescription('');
@@ -89,11 +105,23 @@ function TransactionDialog({
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="amount">Amount</Label>
-              <Input id="amount" type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description (optional)</Label>
-              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Input
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -111,14 +139,18 @@ export default function AccountDetailPage() {
   const params = useParams<{ id: string }>();
   const accountId = params.id;
   const { accessToken } = useAuth();
-  const { data: account, isLoading } = useAccount(accountId);
+  const { data: account, isLoading, isError, error, refetch, isRefetching } = useAccount(accountId);
   const { data: transactions, isLoading: isLoadingTx } = useAccountTransactions(accountId);
   const activate = useActivateAccount();
   const { toast } = useToast();
 
   async function handleDownloadReceipt(transactionId: string, reference: string) {
     try {
-      await downloadAuthenticated(getReceiptDownloadUrl(transactionId), accessToken!, `receipt-${reference}.pdf`);
+      await downloadAuthenticated(
+        getReceiptDownloadUrl(transactionId),
+        accessToken!,
+        `receipt-${reference}.pdf`,
+      );
     } catch (error) {
       toast({
         title: 'Could not download receipt',
@@ -133,8 +165,29 @@ export default function AccountDetailPage() {
       await activate.mutateAsync(accountId);
       toast({ title: 'Account activated', variant: 'success' });
     } catch (error) {
-      toast({ title: 'Could not activate', description: error instanceof ApiClientError ? error.message : undefined, variant: 'destructive' });
+      toast({
+        title: 'Could not activate',
+        description: error instanceof ApiClientError ? error.message : undefined,
+        variant: 'destructive',
+      });
     }
+  }
+
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            {error instanceof ApiClientError
+              ? error.message
+              : "Couldn't load this account. This is usually temporary — please try again."}
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => refetch()} loading={isRefetching}>
+          <RefreshCw className="h-4 w-4" /> Try again
+        </Button>
+      </div>
+    );
   }
 
   if (isLoading || !account) {
@@ -150,7 +203,9 @@ export default function AccountDetailPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{account.accountTypeCode.replace(/_/g, ' ')}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {account.accountTypeCode.replace(/_/g, ' ')}
+          </h1>
           <p className="text-muted-foreground">Account number {account.accountNumber}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -175,10 +230,14 @@ export default function AccountDetailPage() {
           <CardTitle>Balance</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold">{formatMoney(account.availableBalance, account.currencyCode)}</p>
+          <p className="text-3xl font-bold">
+            {formatMoney(account.availableBalance, account.currencyCode)}
+          </p>
           <p className="text-sm text-muted-foreground">Available balance</p>
           {account.openingJournalNumber && (
-            <p className="mt-2 text-xs text-muted-foreground">Opening journal: {account.openingJournalNumber}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Opening journal: {account.openingJournalNumber}
+            </p>
           )}
         </CardContent>
         {account.status === 'ACTIVE' && (
@@ -233,7 +292,9 @@ export default function AccountDetailPage() {
                     <TableCell>
                       <StatusBadge status={tx.status} />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDateTime(tx.createdAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(tx.createdAt)}
+                    </TableCell>
                     <TableCell className="text-right">
                       {tx.status === 'COMPLETED' && (
                         <Button
@@ -277,7 +338,11 @@ function StatementsCard({ accountId }: { accountId: string }) {
     event.preventDefault();
     try {
       await requestStatement.mutateAsync({ accountId, input: { periodStart, periodEnd, format } });
-      toast({ title: 'Statement requested', description: "We'll let you know when it's ready to download.", variant: 'success' });
+      toast({
+        title: 'Statement requested',
+        description: "We'll let you know when it's ready to download.",
+        variant: 'success',
+      });
       setPeriodStart('');
       setPeriodEnd('');
     } catch (error) {
@@ -314,11 +379,23 @@ function StatementsCard({ accountId }: { accountId: string }) {
         <form onSubmit={handleRequest} className="flex flex-wrap items-end gap-3">
           <div className="grid gap-2">
             <Label htmlFor="periodStart">From</Label>
-            <Input id="periodStart" type="date" required value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+            <Input
+              id="periodStart"
+              type="date"
+              required
+              value={periodStart}
+              onChange={(e) => setPeriodStart(e.target.value)}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="periodEnd">To</Label>
-            <Input id="periodEnd" type="date" required value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+            <Input
+              id="periodEnd"
+              type="date"
+              required
+              value={periodEnd}
+              onChange={(e) => setPeriodEnd(e.target.value)}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="statementFormat">Format</Label>
@@ -344,15 +421,23 @@ function StatementsCard({ accountId }: { accountId: string }) {
         ) : (
           <div className="space-y-3">
             {statements.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl border border-border p-3 text-sm">
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-xl border border-border p-3 text-sm"
+              >
                 <div>
                   <p className="font-medium text-foreground">
-                    {new Date(s.periodStart).toLocaleDateString()} – {new Date(s.periodEnd).toLocaleDateString()}
+                    {new Date(s.periodStart).toLocaleDateString()} –{' '}
+                    {new Date(s.periodEnd).toLocaleDateString()}
                   </p>
                   <p className="text-xs text-muted-foreground">{s.format}</p>
                 </div>
                 {s.status === 'COMPLETED' && s.statementId ? (
-                  <Button size="sm" variant="outline" onClick={() => handleDownload(s.statementId!, s.format)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownload(s.statementId!, s.format)}
+                  >
                     <Download className="h-3.5 w-3.5" /> Download
                   </Button>
                 ) : (
