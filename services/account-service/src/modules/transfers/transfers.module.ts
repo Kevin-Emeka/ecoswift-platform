@@ -7,6 +7,7 @@ import { InternalTransferService } from './services/internal-transfer.service';
 import { ExternalTransferService } from './services/external-transfer.service';
 import { TransferLimitsService } from './services/transfer-limits.service';
 import { TransferRiskService } from './services/transfer-risk.service';
+import { TransferOtpService } from './services/transfer-otp.service';
 import { LedgerPostingService } from './services/ledger-posting.service';
 import { AuditService } from '../../common/services/audit.service';
 import { AccountNotificationService } from '../../common/services/account-notification.service';
@@ -37,11 +38,17 @@ import { TransferFraudHooksService } from '../../common/services/transfer-fraud-
     ExternalTransferService,
     TransferLimitsService,
     TransferRiskService,
+    TransferOtpService,
     LedgerPostingService,
     AuditService,
     AccountNotificationService,
     { provide: FRAUD_HOOKS, useClass: TransferFraudHooksService },
   ],
-  exports: [InternalTransferService, ExternalTransferService, AccountNotificationService, LedgerPostingService],
+  exports: [
+    InternalTransferService,
+    ExternalTransferService,
+    AccountNotificationService,
+    LedgerPostingService,
+  ],
 })
 export class TransfersModule {}

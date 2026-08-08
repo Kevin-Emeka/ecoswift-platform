@@ -31,9 +31,18 @@ import {
   TabsTrigger,
   useToast,
 } from '@ecoswift/ui';
-import { useAccounts, useAccountTransactions, useExternalTransfer, useInternalTransfer } from '../../../lib/hooks/use-accounts';
+import {
+  useAccounts,
+  useAccountTransactions,
+  useExternalTransfer,
+  useInternalTransfer,
+} from '../../../lib/hooks/use-accounts';
 import { useBeneficiaries } from '../../../lib/hooks/use-beneficiaries';
-import { useCancelScheduledTransfer, useCreateScheduledTransfer, useScheduledTransfers } from '../../../lib/hooks/use-scheduled-transfers';
+import {
+  useCancelScheduledTransfer,
+  useCreateScheduledTransfer,
+  useScheduledTransfers,
+} from '../../../lib/hooks/use-scheduled-transfers';
 import { listCountries } from '../../../lib/api/reference-data';
 import { formatMoney, formatDateTime } from '../../../lib/format';
 import { ApiClientError } from '../../../lib/api/http-client';
@@ -73,10 +82,12 @@ function MfaStepUpCard<TValues>({
   gate,
   loading,
   onConfirm,
+  description = 'This transfer needs extra verification. Enter the 6-digit code from your authenticator app to continue.',
 }: {
   gate: ReturnType<typeof useMfaGate<TValues>>;
   loading: boolean;
   onConfirm: () => void;
+  description?: string;
 }) {
   return (
     <Card>
@@ -86,9 +97,7 @@ function MfaStepUpCard<TValues>({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          This transfer needs extra verification. Enter the 6-digit code from your authenticator app to continue.
-        </p>
+        <p className="text-sm text-muted-foreground">{description}</p>
         <div className="grid gap-2">
           <Label htmlFor="mfaCode">Verification code</Label>
           <Input
@@ -104,7 +113,13 @@ function MfaStepUpCard<TValues>({
           <Button type="button" variant="outline" onClick={gate.reset}>
             Cancel
           </Button>
-          <Button type="button" className="flex-1" loading={loading} disabled={gate.mfaCode.length !== 6} onClick={onConfirm}>
+          <Button
+            type="button"
+            className="flex-1"
+            loading={loading}
+            disabled={gate.mfaCode.length !== 6}
+            onClick={onConfirm}
+          >
             Confirm
           </Button>
         </div>
@@ -115,7 +130,10 @@ function MfaStepUpCard<TValues>({
 
 export default function TransfersPage() {
   const { data: accounts, isLoading } = useAccounts();
-  const activeAccounts = React.useMemo(() => (accounts ?? []).filter((a) => a.status === 'ACTIVE'), [accounts]);
+  const activeAccounts = React.useMemo(
+    () => (accounts ?? []).filter((a) => a.status === 'ACTIVE'),
+    [accounts],
+  );
 
   if (isLoading) {
     return (
@@ -131,12 +149,16 @@ export default function TransfersPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Transfers</h1>
-          <p className="text-muted-foreground">Move money between your accounts or send to someone else.</p>
+          <p className="text-muted-foreground">
+            Move money between your accounts or send to someone else.
+          </p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
             <Repeat className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">You need an active account before you can transfer money.</p>
+            <p className="text-sm text-muted-foreground">
+              You need an active account before you can transfer money.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -147,7 +169,9 @@ export default function TransfersPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Transfers</h1>
-        <p className="text-muted-foreground">Move money between your accounts or send to someone else.</p>
+        <p className="text-muted-foreground">
+          Move money between your accounts or send to someone else.
+        </p>
       </div>
 
       <Tabs defaultValue="internal">
@@ -193,7 +217,12 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
 
   const form = useForm<InternalTransferForm>({
     resolver: zodResolver(internalTransferSchema),
-    defaultValues: { sourceAccountId: '', destinationAccountId: '', amount: undefined, description: '' },
+    defaultValues: {
+      sourceAccountId: '',
+      destinationAccountId: '',
+      amount: undefined,
+      description: '',
+    },
   });
 
   const sourceAccountId = form.watch('sourceAccountId');
@@ -205,7 +234,8 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
       if (result.status === 'PENDING') {
         toast({
           title: 'Submitted for review',
-          description: 'This transfer was flagged for extra verification and needs staff approval before it completes.',
+          description:
+            'This transfer was flagged for extra verification and needs staff approval before it completes.',
         });
       } else {
         toast({
@@ -215,7 +245,12 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
         });
       }
       mfaGate.reset();
-      form.reset({ sourceAccountId: values.sourceAccountId, destinationAccountId: '', amount: undefined, description: '' });
+      form.reset({
+        sourceAccountId: values.sourceAccountId,
+        destinationAccountId: '',
+        amount: undefined,
+        description: '',
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.code === 'MFA_REQUIRED') {
         mfaGate.requestStepUp(values);
@@ -243,7 +278,8 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
     return (
       <Card>
         <CardContent className="p-8 text-center text-sm text-muted-foreground">
-          You need at least two active accounts to transfer between them. Open a second account to get started.
+          You need at least two active accounts to transfer between them. Open a second account to
+          get started.
         </CardContent>
       </Card>
     );
@@ -255,23 +291,33 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
         <CardTitle>New transfer</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit((values) => submitTransfer(values))} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit((values) => submitTransfer(values))}
+          className="space-y-4"
+        >
           <div className="grid gap-2">
             <Label htmlFor="sourceAccountId">From</Label>
-            <Select onValueChange={(value) => form.setValue('sourceAccountId', value, { shouldValidate: true })}>
+            <Select
+              onValueChange={(value) =>
+                form.setValue('sourceAccountId', value, { shouldValidate: true })
+              }
+            >
               <SelectTrigger id="sourceAccountId">
                 <SelectValue placeholder="Select source account" />
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.accountTypeCode.replace(/_/g, ' ')} — {account.accountNumber} ({formatMoney(account.availableBalance, account.currencyCode)})
+                    {account.accountTypeCode.replace(/_/g, ' ')} — {account.accountNumber} (
+                    {formatMoney(account.availableBalance, account.currencyCode)})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {form.formState.errors.sourceAccountId && (
-              <p className="text-xs text-destructive">{form.formState.errors.sourceAccountId.message}</p>
+              <p className="text-xs text-destructive">
+                {form.formState.errors.sourceAccountId.message}
+              </p>
             )}
           </div>
 
@@ -281,7 +327,11 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
 
           <div className="grid gap-2">
             <Label htmlFor="destinationAccountId">To</Label>
-            <Select onValueChange={(value) => form.setValue('destinationAccountId', value, { shouldValidate: true })}>
+            <Select
+              onValueChange={(value) =>
+                form.setValue('destinationAccountId', value, { shouldValidate: true })
+              }
+            >
               <SelectTrigger id="destinationAccountId">
                 <SelectValue placeholder="Select destination account" />
               </SelectTrigger>
@@ -296,23 +346,35 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
               </SelectContent>
             </Select>
             {form.formState.errors.destinationAccountId && (
-              <p className="text-xs text-destructive">{form.formState.errors.destinationAccountId.message}</p>
+              <p className="text-xs text-destructive">
+                {form.formState.errors.destinationAccountId.message}
+              </p>
             )}
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="amount">Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}</Label>
+            <Label htmlFor="amount">
+              Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}
+            </Label>
             <Input id="amount" type="number" step="0.01" min="0.01" {...form.register('amount')} />
-            {form.formState.errors.amount && <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>}
+            {form.formState.errors.amount && (
+              <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="description">Note (optional)</Label>
-            <Input id="description" placeholder="e.g. Moving to savings" {...form.register('description')} />
+            <Input
+              id="description"
+              placeholder="e.g. Moving to savings"
+              {...form.register('description')}
+            />
           </div>
 
           <Alert>
-            <AlertDescription>Internal transfers post instantly against a real double-entry ledger.</AlertDescription>
+            <AlertDescription>
+              Internal transfers post instantly against a real double-entry ledger.
+            </AlertDescription>
           </Alert>
 
           <Button type="submit" className="w-full" loading={transfer.isPending}>
@@ -334,7 +396,7 @@ const externalTransferSchema = z.object({
     .min(8, 'SWIFT/BIC codes are 8 or 11 characters')
     .max(11, 'SWIFT/BIC codes are 8 or 11 characters')
     .transform((v) => v.toUpperCase()),
-  bankCountryCode: z.string().length(2, 'Select the bank\'s country'),
+  bankCountryCode: z.string().length(2, "Select the bank's country"),
   bankAddress: z.string().min(1, 'Required').max(250),
   routingNumber: z.string().max(20).optional(),
   amount: z.coerce.number().min(0.01, 'Enter an amount greater than 0'),
@@ -386,7 +448,8 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
       if (result.status === 'PENDING') {
         toast({
           title: 'Submitted for review',
-          description: 'This transfer was flagged for extra verification and needs staff approval before it completes.',
+          description:
+            'This transfer was flagged for extra verification and needs staff approval before it completes.',
         });
       } else {
         toast({
@@ -427,6 +490,7 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
         gate={mfaGate}
         loading={transfer.isPending}
         onConfirm={() => submitTransfer(mfaGate.pendingValues!, mfaGate.mfaCode)}
+        description="Every wire transfer requires confirmation. We emailed a 6-digit code to your registered email address — enter it below to complete this transfer."
       />
     );
   }
@@ -439,57 +503,96 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit((values) => submitTransfer(values))} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit((values) => submitTransfer(values))}
+          className="space-y-4"
+        >
           <div className="grid gap-2">
             <Label htmlFor="extSourceAccountId">From</Label>
-            <Select onValueChange={(value) => form.setValue('sourceAccountId', value, { shouldValidate: true })}>
+            <Select
+              onValueChange={(value) =>
+                form.setValue('sourceAccountId', value, { shouldValidate: true })
+              }
+            >
               <SelectTrigger id="extSourceAccountId">
                 <SelectValue placeholder="Select source account" />
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.accountTypeCode.replace(/_/g, ' ')} — {account.accountNumber} ({formatMoney(account.availableBalance, account.currencyCode)})
+                    {account.accountTypeCode.replace(/_/g, ' ')} — {account.accountNumber} (
+                    {formatMoney(account.availableBalance, account.currencyCode)})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {form.formState.errors.sourceAccountId && (
-              <p className="text-xs text-destructive">{form.formState.errors.sourceAccountId.message}</p>
+              <p className="text-xs text-destructive">
+                {form.formState.errors.sourceAccountId.message}
+              </p>
             )}
           </div>
 
-          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beneficiary</p>
+          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Beneficiary
+          </p>
 
           <div className="grid gap-2">
             <Label htmlFor="beneficiaryName">Beneficiary full name</Label>
-            <Input id="beneficiaryName" placeholder="Jane Doe" {...form.register('beneficiaryName')} />
+            <Input
+              id="beneficiaryName"
+              placeholder="Jane Doe"
+              {...form.register('beneficiaryName')}
+            />
             {form.formState.errors.beneficiaryName && (
-              <p className="text-xs text-destructive">{form.formState.errors.beneficiaryName.message}</p>
+              <p className="text-xs text-destructive">
+                {form.formState.errors.beneficiaryName.message}
+              </p>
             )}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="accountNumber">Account number / IBAN</Label>
-            <Input id="accountNumber" placeholder="GB29NWBK60161331926819" {...form.register('accountNumber')} />
+            <Input
+              id="accountNumber"
+              placeholder="GB29NWBK60161331926819"
+              {...form.register('accountNumber')}
+            />
             {form.formState.errors.accountNumber && (
-              <p className="text-xs text-destructive">{form.formState.errors.accountNumber.message}</p>
+              <p className="text-xs text-destructive">
+                {form.formState.errors.accountNumber.message}
+              </p>
             )}
           </div>
 
-          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beneficiary&apos;s bank</p>
+          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Beneficiary&apos;s bank
+          </p>
 
           <div className="grid gap-2">
             <Label htmlFor="bankName">Bank name</Label>
-            <Input id="bankName" placeholder="National Westminster Bank" {...form.register('bankName')} />
-            {form.formState.errors.bankName && <p className="text-xs text-destructive">{form.formState.errors.bankName.message}</p>}
+            <Input
+              id="bankName"
+              placeholder="National Westminster Bank"
+              {...form.register('bankName')}
+            />
+            {form.formState.errors.bankName && (
+              <p className="text-xs text-destructive">{form.formState.errors.bankName.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
               <Label htmlFor="swiftBic">SWIFT / BIC code</Label>
-              <Input id="swiftBic" placeholder="NWBKGB2L" className="uppercase" {...form.register('swiftBic')} />
-              {form.formState.errors.swiftBic && <p className="text-xs text-destructive">{form.formState.errors.swiftBic.message}</p>}
+              <Input
+                id="swiftBic"
+                placeholder="NWBKGB2L"
+                className="uppercase"
+                {...form.register('swiftBic')}
+              />
+              {form.formState.errors.swiftBic && (
+                <p className="text-xs text-destructive">{form.formState.errors.swiftBic.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="bankCountryCode">Bank country</Label>
@@ -497,50 +600,87 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
                 id="bankCountryCode"
                 options={countryOptions}
                 value={bankCountryCode}
-                onChange={(value) => form.setValue('bankCountryCode', value, { shouldValidate: true })}
+                onChange={(value) =>
+                  form.setValue('bankCountryCode', value, { shouldValidate: true })
+                }
                 placeholder="Select country"
                 searchPlaceholder="Search countries…"
                 emptyMessage="No country found."
                 invalid={!!form.formState.errors.bankCountryCode}
               />
               {form.formState.errors.bankCountryCode && (
-                <p className="text-xs text-destructive">{form.formState.errors.bankCountryCode.message}</p>
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.bankCountryCode.message}
+                </p>
               )}
             </div>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="bankAddress">Bank address</Label>
-            <Input id="bankAddress" placeholder="250 Bishopsgate, London EC2M 4AA, United Kingdom" {...form.register('bankAddress')} />
-            {form.formState.errors.bankAddress && <p className="text-xs text-destructive">{form.formState.errors.bankAddress.message}</p>}
+            <Input
+              id="bankAddress"
+              placeholder="250 Bishopsgate, London EC2M 4AA, United Kingdom"
+              {...form.register('bankAddress')}
+            />
+            {form.formState.errors.bankAddress && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.bankAddress.message}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="routingNumber">Routing number / sort code (optional)</Label>
-            <Input id="routingNumber" placeholder="Only needed for some corridors, e.g. a USD wire's domestic leg" {...form.register('routingNumber')} />
+            <Input
+              id="routingNumber"
+              placeholder="Only needed for some corridors, e.g. a USD wire's domestic leg"
+              {...form.register('routingNumber')}
+            />
           </div>
 
-          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment</p>
+          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Payment
+          </p>
 
           <div className="grid gap-2">
-            <Label htmlFor="extAmount">Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}</Label>
-            <Input id="extAmount" type="number" step="0.01" min="0.01" {...form.register('amount')} />
-            {form.formState.errors.amount && <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>}
+            <Label htmlFor="extAmount">
+              Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}
+            </Label>
+            <Input
+              id="extAmount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              {...form.register('amount')}
+            />
+            {form.formState.errors.amount && (
+              <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="extDescription">Purpose of payment (optional)</Label>
-            <Input id="extDescription" placeholder="e.g. Invoice #4521" {...form.register('description')} />
+            <Input
+              id="extDescription"
+              placeholder="e.g. Invoice #4521"
+              {...form.register('description')}
+            />
           </div>
 
           <Alert variant="warning">
             <AlertDescription>
-              International wires are simulated in this environment — no licensed payment rail is connected, so funds
-              are not actually delivered to a real external bank.
+              International wires are simulated in this environment — no licensed payment rail is
+              connected, so funds are not actually delivered to a real external bank.
             </AlertDescription>
           </Alert>
 
-          <Button type="submit" className="w-full" loading={transfer.isPending} disabled={!sourceAccount}>
+          <Button
+            type="submit"
+            className="w-full"
+            loading={transfer.isPending}
+            disabled={!sourceAccount}
+          >
             Send wire transfer
           </Button>
         </form>
@@ -613,7 +753,8 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
         sourceAccountId: values.sourceAccountId,
         input: {
           transferType: values.transferType,
-          destinationAccountId: values.transferType === 'INTERNAL' ? values.destinationAccountId : undefined,
+          destinationAccountId:
+            values.transferType === 'INTERNAL' ? values.destinationAccountId : undefined,
           beneficiaryId: values.transferType === 'EXTERNAL' ? values.beneficiaryId : undefined,
           amount: values.amount,
           description: values.description,
@@ -623,7 +764,15 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
         },
       });
       toast({ title: 'Transfer scheduled', variant: 'success' });
-      form.reset({ ...form.getValues(), destinationAccountId: '', beneficiaryId: '', amount: undefined, description: '', startAt: '', endDate: '' });
+      form.reset({
+        ...form.getValues(),
+        destinationAccountId: '',
+        beneficiaryId: '',
+        amount: undefined,
+        description: '',
+        startAt: '',
+        endDate: '',
+      });
     } catch (error) {
       toast({
         title: 'Could not schedule transfer',
@@ -661,7 +810,11 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
               <Label htmlFor="scheduleTransferType">Send</Label>
               <Select
                 defaultValue="INTERNAL"
-                onValueChange={(value) => form.setValue('transferType', value as ScheduleForm['transferType'], { shouldValidate: true })}
+                onValueChange={(value) =>
+                  form.setValue('transferType', value as ScheduleForm['transferType'], {
+                    shouldValidate: true,
+                  })
+                }
               >
                 <SelectTrigger id="scheduleTransferType">
                   <SelectValue />
@@ -675,7 +828,11 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
 
             <div className="grid gap-2">
               <Label htmlFor="scheduleSourceAccountId">From</Label>
-              <Select onValueChange={(value) => form.setValue('sourceAccountId', value, { shouldValidate: true })}>
+              <Select
+                onValueChange={(value) =>
+                  form.setValue('sourceAccountId', value, { shouldValidate: true })
+                }
+              >
                 <SelectTrigger id="scheduleSourceAccountId">
                   <SelectValue placeholder="Select source account" />
                 </SelectTrigger>
@@ -688,14 +845,20 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                 </SelectContent>
               </Select>
               {form.formState.errors.sourceAccountId && (
-                <p className="text-xs text-destructive">{form.formState.errors.sourceAccountId.message}</p>
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.sourceAccountId.message}
+                </p>
               )}
             </div>
 
             {transferType === 'INTERNAL' ? (
               <div className="grid gap-2">
                 <Label htmlFor="scheduleDestinationAccountId">To</Label>
-                <Select onValueChange={(value) => form.setValue('destinationAccountId', value, { shouldValidate: true })}>
+                <Select
+                  onValueChange={(value) =>
+                    form.setValue('destinationAccountId', value, { shouldValidate: true })
+                  }
+                >
                   <SelectTrigger id="scheduleDestinationAccountId">
                     <SelectValue placeholder="Select destination account" />
                   </SelectTrigger>
@@ -710,13 +873,19 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                   </SelectContent>
                 </Select>
                 {form.formState.errors.destinationAccountId && (
-                  <p className="text-xs text-destructive">{form.formState.errors.destinationAccountId.message}</p>
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.destinationAccountId.message}
+                  </p>
                 )}
               </div>
             ) : (
               <div className="grid gap-2">
                 <Label htmlFor="scheduleBeneficiaryId">To</Label>
-                <Select onValueChange={(value) => form.setValue('beneficiaryId', value, { shouldValidate: true })}>
+                <Select
+                  onValueChange={(value) =>
+                    form.setValue('beneficiaryId', value, { shouldValidate: true })
+                  }
+                >
                   <SelectTrigger id="scheduleBeneficiaryId">
                     <SelectValue placeholder="Select beneficiary" />
                   </SelectTrigger>
@@ -729,15 +898,27 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                   </SelectContent>
                 </Select>
                 {form.formState.errors.beneficiaryId && (
-                  <p className="text-xs text-destructive">{form.formState.errors.beneficiaryId.message}</p>
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.beneficiaryId.message}
+                  </p>
                 )}
               </div>
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="scheduleAmount">Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}</Label>
-              <Input id="scheduleAmount" type="number" step="0.01" min="0.01" {...form.register('amount')} />
-              {form.formState.errors.amount && <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>}
+              <Label htmlFor="scheduleAmount">
+                Amount{sourceAccount ? ` (${sourceAccount.currencyCode})` : ''}
+              </Label>
+              <Input
+                id="scheduleAmount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                {...form.register('amount')}
+              />
+              {form.formState.errors.amount && (
+                <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -745,7 +926,11 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                 <Label htmlFor="scheduleFrequency">Frequency</Label>
                 <Select
                   defaultValue="ONE_TIME"
-                  onValueChange={(value) => form.setValue('frequency', value as ScheduleForm['frequency'], { shouldValidate: true })}
+                  onValueChange={(value) =>
+                    form.setValue('frequency', value as ScheduleForm['frequency'], {
+                      shouldValidate: true,
+                    })
+                  }
                 >
                   <SelectTrigger id="scheduleFrequency">
                     <SelectValue />
@@ -760,9 +945,15 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="scheduleStartAt">{frequency === 'ONE_TIME' ? 'Send on' : 'Starting'}</Label>
+                <Label htmlFor="scheduleStartAt">
+                  {frequency === 'ONE_TIME' ? 'Send on' : 'Starting'}
+                </Label>
                 <Input id="scheduleStartAt" type="datetime-local" {...form.register('startAt')} />
-                {form.formState.errors.startAt && <p className="text-xs text-destructive">{form.formState.errors.startAt.message}</p>}
+                {form.formState.errors.startAt && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.startAt.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -775,7 +966,11 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
 
             <div className="grid gap-2">
               <Label htmlFor="scheduleDescription">Note (optional)</Label>
-              <Input id="scheduleDescription" placeholder="e.g. Rent" {...form.register('description')} />
+              <Input
+                id="scheduleDescription"
+                placeholder="e.g. Rent"
+                {...form.register('description')}
+              />
             </div>
 
             <Button type="submit" className="w-full" loading={createScheduled.isPending}>
@@ -796,10 +991,16 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
             <p className="text-sm text-muted-foreground">No pending scheduled transfers.</p>
           ) : (
             pending.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl border border-border p-3 text-sm">
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-xl border border-border p-3 text-sm"
+              >
                 <div>
                   <p className="font-medium text-foreground">
-                    {s.description ?? (s.transferType === 'INTERNAL' ? 'Transfer between accounts' : `To ${s.beneficiaryName}`)}
+                    {s.description ??
+                      (s.transferType === 'INTERNAL'
+                        ? 'Transfer between accounts'
+                        : `To ${s.beneficiaryName}`)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {FREQUENCY_LABELS[s.frequency]} · Next {formatDateTime(s.nextRunAt)}
@@ -807,7 +1008,12 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{formatMoney(s.amount, s.currencyCode)}</span>
-                  <Button size="icon" variant="ghost" onClick={() => handleCancel(s.id)} aria-label="Cancel scheduled transfer">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleCancel(s.id)}
+                    aria-label="Cancel scheduled transfer"
+                  >
                     <Ban className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </div>
@@ -824,10 +1030,16 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
           </CardHeader>
           <CardContent className="space-y-3">
             {others.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl border border-border p-3 text-sm">
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-xl border border-border p-3 text-sm"
+              >
                 <div>
                   <p className="font-medium text-foreground">
-                    {s.description ?? (s.transferType === 'INTERNAL' ? 'Transfer between accounts' : `To ${s.beneficiaryName}`)}
+                    {s.description ??
+                      (s.transferType === 'INTERNAL'
+                        ? 'Transfer between accounts'
+                        : `To ${s.beneficiaryName}`)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {FREQUENCY_LABELS[s.frequency]}
@@ -837,7 +1049,13 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{formatMoney(s.amount, s.currencyCode)}</span>
                   <Badge
-                    variant={s.status === 'COMPLETED' ? 'success' : s.status === 'FAILED' ? 'destructive' : 'outline'}
+                    variant={
+                      s.status === 'COMPLETED'
+                        ? 'success'
+                        : s.status === 'FAILED'
+                          ? 'destructive'
+                          : 'outline'
+                    }
                   >
                     {s.status}
                   </Badge>
@@ -869,7 +1087,10 @@ function RecentTransfers({ accountIds }: { accountIds: string[] }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {transfers.slice(0, 10).map((t) => (
-          <div key={t.id} className="flex items-center justify-between rounded-xl border border-border p-3 text-sm">
+          <div
+            key={t.id}
+            className="flex items-center justify-between rounded-xl border border-border p-3 text-sm"
+          >
             <div>
               <p className="font-medium text-foreground">{t.description ?? 'Transfer'}</p>
               <p className="text-xs text-muted-foreground">

@@ -1,19 +1,24 @@
 import { randomInt } from 'node:crypto';
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService, type Prisma } from '@ecoswift/database';
+import { PrismaService } from '@ecoswift/database';
 import { EVENT_PUBLISHER, TRANSFER_COMPLETED } from '@ecoswift/event-bus';
 import type { EventPublisherPort } from '@ecoswift/event-bus';
 import { RECEIPTS_QUEUE } from '@ecoswift/queue';
 import type { QueuePort, ReceiptJobPayload } from '@ecoswift/queue';
 import { MfaRequiredException } from '@ecoswift/shared';
-import type { FraudSignal } from '@ecoswift/security';
 import { AuditService } from '../../../common/services/audit.service';
 import { AccountNotificationService } from '../../../common/services/account-notification.service';
 import { resolveHighValueTransferThreshold } from '../../../common/services/transfer-thresholds';
 import { BeneficiariesService } from '../../beneficiaries/services/beneficiaries.service';
 import { TransferLimitsService } from './transfer-limits.service';
-import { TransferRiskService } from './transfer-risk.service';
+import { TransferOtpService } from './transfer-otp.service';
 import { LedgerPostingService } from './ledger-posting.service';
 import type { TransferResponseDto } from '../dto/transfer-response.dto';
 
@@ -58,12 +63,12 @@ export const CASH_LEDGER_ACCOUNT_CODE = '1000';
  * `SandboxTransactionService.withdraw` is only that this is tied to a
  * named, saved beneficiary and modeled as `TRANSFER_EXTERNAL`.
  *
- * Milestone 2 security phase: same `TransferRiskService` gate as
- * `InternalTransferService` — see that class's doc comment for the
- * MFA-step-up / held-for-review shape. Money leaving to someone else is,
- * if anything, the more important place to have this than an internal
- * transfer, so it isn't skipped here even though the settlement itself is
- * already simulated.
+ * Every wire requires a mandatory emailed OTP (`TransferOtpService`) to
+ * confirm — not the risk-based conditional step-up
+ * `InternalTransferService` uses (TOTP-if-enrolled, else hold for staff
+ * review). Money leaving to someone else is the more important place to
+ * require confirmation, so this is unconditional: no code, no transfer,
+ * every time, regardless of amount or risk signals.
  */
 @Injectable()
 export class ExternalTransferService {
@@ -72,7 +77,7 @@ export class ExternalTransferService {
     private readonly auditService: AuditService,
     private readonly notificationService: AccountNotificationService,
     private readonly limitsService: TransferLimitsService,
-    private readonly riskService: TransferRiskService,
+    private readonly otpService: TransferOtpService,
     private readonly ledgerPostingService: LedgerPostingService,
     private readonly beneficiariesService: BeneficiariesService,
     private readonly configService: ConfigService,
@@ -95,10 +100,14 @@ export class ExternalTransferService {
     const beneficiary = await this.beneficiariesService.findOrCreateForWire(userId, wireDetails);
 
     if (beneficiary.currencyId !== account.currencyId) {
-      throw new BadRequestException('The beneficiary currency does not match the source account currency');
+      throw new BadRequestException(
+        'The beneficiary currency does not match the source account currency',
+      );
     }
 
-    const balance = await this.prisma.accountBalance.findUniqueOrThrow({ where: { accountId: sourceAccountId } });
+    const balance = await this.prisma.accountBalance.findUniqueOrThrow({
+      where: { accountId: sourceAccountId },
+    });
     if (!account.accountType.allowsOverdraft && Number(balance.availableBalance) < amount) {
       throw new BadRequestException('Insufficient available balance for this transfer');
     }
@@ -111,84 +120,40 @@ export class ExternalTransferService {
       amount,
     });
 
-    const { hold: holdForReview, signals: holdSignals } = await this.resolveStepUp(
-      userId,
-      deviceId,
-      amount,
-      account.currency.isoCode,
-      mfaCode,
-    );
+    const customerWithUser = await this.prisma.customer.findUniqueOrThrow({
+      where: { id: account.customerId },
+      include: { user: { include: { profile: true } } },
+    });
 
-    const transferType = await this.prisma.transactionType.findUniqueOrThrow({ where: { code: 'TRANSFER_EXTERNAL' } });
+    // Mandatory OTP, every time — no risk-based conditional, no
+    // hold-for-review fallback. First call (no mfaCode yet): send the code
+    // and stop here with MFA_REQUIRED. Resubmission with mfaCode: verify
+    // it, then fall through to actually posting the transfer below.
+    if (!mfaCode) {
+      await this.otpService.sendCode(
+        userId,
+        account.customerId,
+        customerWithUser.user.email,
+        customerWithUser.user.profile?.firstName ?? 'there',
+      );
+      throw new MfaRequiredException(
+        'Enter the verification code we emailed you to confirm this transfer',
+      );
+    }
+    await this.otpService.verifyCode(userId, mfaCode);
+
+    const transferType = await this.prisma.transactionType.findUniqueOrThrow({
+      where: { code: 'TRANSFER_EXTERNAL' },
+    });
     const reference = await this.generateTransactionReference();
     const label = `[SIMULATED SETTLEMENT] ${description?.trim() || `Transfer to ${beneficiary.beneficiaryName}`}`;
 
-    if (holdForReview) {
-      const held = await this.prisma.$transaction(async (tx) => {
-        const transaction = await tx.transaction.create({
-          data: {
-            transactionReference: reference,
-            transactionTypeId: transferType.id,
-            sourceAccountId,
-            amount,
-            currencyId: account.currencyId,
-            status: 'PENDING',
-            initiatedBy: userId,
-            description: label,
-            metadata: { fraudSignals: holdSignals } as unknown as Prisma.InputJsonValue,
-          },
-        });
-        const transferRequest = await tx.transferRequest.create({
-          data: {
-            transactionId: transaction.id,
-            transferChannel: 'EXTERNAL_ACH',
-            sourceAccountId,
-            destinationBeneficiaryId: beneficiary.id,
-            requestedAmount: amount,
-            narrative: label,
-          },
-        });
-        await tx.transferApproval.create({
-          data: { transferRequestId: transferRequest.id, makerId: userId, status: 'PENDING' },
-        });
-        return transaction;
-      });
-
-      await this.auditService.record({
-        actorUserId: userId,
-        actorType: 'CUSTOMER',
-        actionType: 'CREATE',
-        resourceType: 'Transaction',
-        resourceId: held.id,
-        description: `Held for manual review: ${label}`,
-        afterState: { amount, direction: 'TRANSFER_EXTERNAL', sourceAccountId, beneficiaryId: beneficiary.id, status: 'PENDING' },
-      });
-
-      const heldCustomer = await this.prisma.customer.findUniqueOrThrow({
-        where: { id: account.customerId },
-        include: { user: { include: { profile: true } } },
-      });
-      await this.notificationService.sendEmail({
-        customerId: account.customerId,
-        toAddress: heldCustomer.user.email,
-        templateCode: 'TRANSFER_INITIATED_EMAIL',
-        variables: {
-          firstName: heldCustomer.user.profile?.firstName ?? 'there',
-          amount: amount.toFixed(2),
-          currencyCode: account.currency.isoCode,
-          sourceAccountNumber: account.accountNumber,
-          destinationAccountNumber: `${beneficiary.beneficiaryName} (${beneficiary.accountNumber})`,
-          transactionReference: reference,
-          portalUrl: this.configService.get<string>('customerPortalUrl') ?? 'http://localhost:3200',
-          year: String(new Date().getFullYear()),
-        },
-      });
-
-      return this.toResponseDto(held, account.currency.isoCode);
-    }
-
-    const cashLedgerAccount = await this.prisma.ledgerAccount.findUniqueOrThrow({ where: { code: CASH_LEDGER_ACCOUNT_CODE } });
-    const customerLedgerAccount = await this.prisma.ledgerAccount.findUniqueOrThrow({ where: { customerAccountId: sourceAccountId } });
+    const cashLedgerAccount = await this.prisma.ledgerAccount.findUniqueOrThrow({
+      where: { code: CASH_LEDGER_ACCOUNT_CODE },
+    });
+    const customerLedgerAccount = await this.prisma.ledgerAccount.findUniqueOrThrow({
+      where: { customerAccountId: sourceAccountId },
+    });
 
     const result = await this.prisma.$transaction(async (tx) => {
       const transaction = await tx.transaction.create({
@@ -251,15 +216,16 @@ export class ExternalTransferService {
       resourceType: 'Transaction',
       resourceId: result.transaction.id,
       description: label,
-      afterState: { amount, direction: 'TRANSFER_EXTERNAL', sourceAccountId, beneficiaryId: beneficiary.id },
+      afterState: {
+        amount,
+        direction: 'TRANSFER_EXTERNAL',
+        sourceAccountId,
+        beneficiaryId: beneficiary.id,
+      },
     });
 
     await this.receiptsQueue.enqueue({ transactionId: result.transaction.id, format: 'JSON' });
 
-    const customerWithUser = await this.prisma.customer.findUniqueOrThrow({
-      where: { id: account.customerId },
-      include: { user: { include: { profile: true } } },
-    });
     await this.notificationService.sendEmail({
       customerId: account.customerId,
       toAddress: customerWithUser.user.email,
@@ -299,36 +265,6 @@ export class ExternalTransferService {
     return this.toResponseDto(result.transaction, account.currency.isoCode);
   }
 
-  /**
-   * Returns `hold: true` (plus the triggered `FraudSignal[]`, so the hold
-   * carries a reason a reviewer can actually see) if the transfer must wait
-   * for manual review (risk-flagged, no MFA available to step up with).
-   * Throws `MfaRequiredException`/`BadRequestException` for the other two
-   * risk-flagged outcomes. `hold: false` when nothing was flagged.
-   */
-  private async resolveStepUp(
-    userId: string,
-    deviceId: string | undefined,
-    amount: number,
-    currencyCode: string,
-    mfaCode: string | undefined,
-  ): Promise<{ hold: boolean; signals: FraudSignal[] }> {
-    const risk = await this.riskService.assess({ userId, deviceId, amount, currencyCode });
-    if (!risk.requiresStepUp) return { hold: false, signals: [] };
-
-    if (mfaCode) {
-      const valid = await this.riskService.verifyStepUpCode(userId, mfaCode);
-      if (!valid) throw new BadRequestException('Invalid or expired verification code');
-      return { hold: false, signals: [] };
-    }
-
-    if (await this.riskService.hasTotpEnrolled(userId)) {
-      throw new MfaRequiredException('This transfer requires a verification code from your authenticator app');
-    }
-
-    return { hold: true, signals: risk.signals }; // No MFA to step up with — hold for staff review instead of blocking outright.
-  }
-
   private assertSandboxEnabled(): void {
     if (this.configService.get<string>('nodeEnv') === 'production') {
       throw new ForbiddenException(
@@ -346,7 +282,9 @@ export class ExternalTransferService {
       throw new NotFoundException('Account not found');
     }
     if (account.status !== 'ACTIVE') {
-      throw new BadRequestException(`Account must be ACTIVE to transact (current status: ${account.status})`);
+      throw new BadRequestException(
+        `Account must be ACTIVE to transact (current status: ${account.status})`,
+      );
     }
     return account;
   }
@@ -354,7 +292,9 @@ export class ExternalTransferService {
   private async generateTransactionReference(): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const candidate = `TRX${randomInt(100_000_000, 999_999_999)}`;
-      const existing = await this.prisma.transaction.findUnique({ where: { transactionReference: candidate } });
+      const existing = await this.prisma.transaction.findUnique({
+        where: { transactionReference: candidate },
+      });
       if (!existing) return candidate;
     }
     throw new Error('Could not generate a unique transaction reference');
