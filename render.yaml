@@ -1,0 +1,118 @@
+envVarGroups:
+  - name: ecoswift-shared
+    envVars:
+      # Real deployment, but never NODE_ENV=production — several sandbox
+      # money-movement guards (SandboxTransactionService, ExternalTransferService,
+      # admin-credit) explicitly disable themselves when NODE_ENV === 'production',
+      # since this platform has no licensed banking rail behind it. 'staging' keeps
+      # every sandbox feature working while still being a real, live deployment.
+      - key: NODE_ENV
+        value: staging
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_TLS_ENABLED
+        value: "true"
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: EMAIL_DRIVER
+        value: smtp
+      - key: SMTP_HOST
+        value: smtp.resend.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: resend
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: '"Ecoswift Bank" <noreply@ecoswiftbank.com>'
+      - key: CUSTOMER_PORTAL_URL
+        value: https://www.ecoswiftbank.com
+      - key: ADMIN_PORTAL_URL
+        value: https://ecoswift-platform-admin.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://www.ecoswiftbank.com,https://ecoswiftbank.com,https://ecoswift-platform-admin.vercel.app
+
+services:
+  - type: web
+    name: ecoswift-auth-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/auth-service run build
+    startCommand: node services/auth-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-account-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/account-service run build
+    startCommand: node services/account-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-notification-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/notification-service run build
+    startCommand: node services/notification-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-receipt-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/receipt-service run build
+    startCommand: node services/receipt-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-audit-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/audit-service run build
+    startCommand: node services/audit-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-email-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/email-service run build
+    startCommand: node services/email-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
+
+  - type: web
+    name: ecoswift-sms-service
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/sms-service run build
+    startCommand: node services/sms-service/dist/main.js
+    healthCheckPath: /v1/health
+    envVarGroups:
+      - ecoswift-shared
