@@ -48,8 +48,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/auth-service run build
     startCommand: node services/auth-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-account-service
@@ -59,8 +59,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/account-service run build
     startCommand: node services/account-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-notification-service
@@ -70,8 +70,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/notification-service run build
     startCommand: node services/notification-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-receipt-service
@@ -81,8 +81,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/receipt-service run build
     startCommand: node services/receipt-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-audit-service
@@ -92,8 +92,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/audit-service run build
     startCommand: node services/audit-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-email-service
@@ -103,8 +103,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/email-service run build
     startCommand: node services/email-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
 
   - type: web
     name: ecoswift-sms-service
@@ -114,5 +114,5 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm --filter @ecoswift/sms-service run build
     startCommand: node services/sms-service/dist/main.js
     healthCheckPath: /v1/health
-    envVarGroups:
-      - ecoswift-shared
+    envVars:
+      - fromGroup: ecoswift-shared
