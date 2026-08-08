@@ -61,7 +61,11 @@ export const envSchema = z.object({
   // 'console' (default) logs a clearly-labeled [SANDBOX] line instead of
   // sending anything — safe by default for this dev/demo deployment.
   // 'smtp'/'twilio' require the corresponding credentials below.
-  EMAIL_DRIVER: z.enum(['console', 'smtp']).default('console'),
+  // 'resend' talks to Resend's HTTPS API directly rather than SMTP — many
+  // hosts block outbound SMTP ports (587/465/25) by default, which makes
+  // 'smtp' silently time out on every send with no way to fix it from
+  // config alone. Prefer 'resend' when the underlying provider is Resend.
+  EMAIL_DRIVER: z.enum(['console', 'smtp', 'resend']).default('console'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   SMTP_USER: z.string().optional(),

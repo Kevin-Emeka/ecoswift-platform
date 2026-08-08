@@ -21,7 +21,7 @@ envVarGroups:
       - key: ENCRYPTION_KEY
         sync: false
       - key: EMAIL_DRIVER
-        value: smtp
+        value: resend
       - key: SMTP_HOST
         value: smtp.resend.com
       - key: SMTP_PORT
