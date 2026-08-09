@@ -11,6 +11,7 @@ import {
   Ban,
   CalendarClock,
   CheckCircle2,
+  Clock,
   Download,
   Landmark,
   Printer,
@@ -1115,6 +1116,16 @@ function ReceiptRow({ label, value, strong }: { label: string; value?: string; s
  * global `@media print` rule (globals.css) that hides everything else
  * on the page when printing.
  */
+/** Natural-language reads better on a receipt than a raw system status code. */
+const STATUS_HEADLINE: Record<string, string> = {
+  COMPLETED: 'Transfer Successful',
+  PENDING: 'Pending Review',
+  PROCESSING: 'Processing',
+  FAILED: 'Transfer Failed',
+  REVERSED: 'Transfer Reversed',
+  CANCELLED: 'Transfer Cancelled',
+};
+
 function ReceiptDetails({ content }: { content: ReceiptContent }) {
   const beneficiaryBankAddress = [
     content.beneficiaryBankAddress,
@@ -1122,16 +1133,22 @@ function ReceiptDetails({ content }: { content: ReceiptContent }) {
   ]
     .filter(Boolean)
     .join(', ');
+  const isSuccessful = content.status === 'COMPLETED';
+  const headline = STATUS_HEADLINE[content.status] ?? content.status.replace(/_/g, ' ');
 
   return (
     <div className="receipt-print-area space-y-4 text-sm">
-      <div className="rounded-xl bg-brand-gradient p-5 text-center text-white">
-        <p className="text-xs uppercase tracking-wide text-white/60">Amount</p>
-        <p className="mt-1 text-3xl font-bold">
-          {formatMoney(content.amount, content.currencyCode)}
-        </p>
-        <div className="mt-2">
-          <StatusBadge status={content.status} />
+      <div className="relative overflow-hidden rounded-xl bg-brand-gradient p-6 text-center text-white shadow-md">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
+        <div className="relative">
+          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/15">
+            {isSuccessful ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+          </div>
+          <p className="text-xs uppercase tracking-widest text-white/60">Amount</p>
+          <p className="mt-1 text-4xl font-bold tracking-tight">
+            {formatMoney(content.amount, content.currencyCode)}
+          </p>
+          <p className="mt-2 text-sm font-medium text-white/90">{headline}</p>
         </div>
       </div>
 
@@ -1140,11 +1157,21 @@ function ReceiptDetails({ content }: { content: ReceiptContent }) {
         <ReceiptRow label="Transfer reference" value={content.transactionReference} />
         <ReceiptRow label="Date & time" value={formatDateTime(content.transactionCreatedAt)} />
         <ReceiptRow label="Sender" value={content.senderName ?? content.sourceAccountNumber} />
+        {content.senderName && content.sourceAccountNumber && (
+          <ReceiptRow
+            label="Sender account"
+            value={`Ecoswift Bank · ${content.sourceAccountNumber}`}
+          />
+        )}
         <ReceiptRow
           label="Recipient"
           value={content.recipientName ?? content.destinationAccountNumber}
         />
+        {content.recipientName && content.destinationAccountNumber && (
+          <ReceiptRow label="Recipient account" value={content.destinationAccountNumber} />
+        )}
         <ReceiptRow label="Purpose" value={content.description} />
+        <ReceiptRow label="Status" value={headline} />
       </div>
 
       {content.beneficiaryBankName && (

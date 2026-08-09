@@ -251,7 +251,7 @@ export class ExternalTransferService {
         purpose: description?.trim() || 'Not specified',
         fee: '0.00',
         totalDebited: amount.toFixed(2),
-        statusLabel: 'Completed',
+        statusLabel: 'Successful',
         transactionReference: reference,
         dateFormatted: completedAt.toLocaleDateString('en-US', {
           timeZone: 'UTC',

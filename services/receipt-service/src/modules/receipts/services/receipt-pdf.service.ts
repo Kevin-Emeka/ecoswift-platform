@@ -5,6 +5,16 @@ const BRAND_NAVY = '#0B1F3A';
 const BRAND_GREEN = '#059669';
 const MUTED = '#6B7280';
 
+/** Natural-language reads better on a receipt than a raw system status code — see the in-app receipt dialog's identical mapping. */
+const STATUS_HEADLINE: Record<string, string> = {
+  COMPLETED: 'Successful',
+  PENDING: 'Pending Review',
+  PROCESSING: 'Processing',
+  FAILED: 'Failed',
+  REVERSED: 'Reversed',
+  CANCELLED: 'Cancelled',
+};
+
 export interface ReceiptPdfData {
   receiptReference: string;
   transactionReference: string;
@@ -74,7 +84,7 @@ export class ReceiptPdfService {
       ['Amount', `${data.amount} ${data.currencyCode}`],
       ['Sender', data.senderName ?? data.sourceAccountNumber ?? '—'],
       ['Recipient', data.recipientName ?? data.destinationAccountNumber ?? '—'],
-      ['Status', data.status],
+      ['Status', STATUS_HEADLINE[data.status] ?? data.status],
     ];
     if (data.description) rows.push(['Description', data.description]);
     if (data.beneficiaryBankName) rows.push(['Beneficiary Bank', data.beneficiaryBankName]);
