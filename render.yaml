@@ -35,9 +35,9 @@ envVarGroups:
       - key: CUSTOMER_PORTAL_URL
         value: https://www.ecoswiftbank.com
       - key: ADMIN_PORTAL_URL
-        value: https://ecoswift-platform-admin.vercel.app
+        value: https://admin.ecoswiftbank.com
       - key: CORS_ALLOWED_ORIGINS
-        value: https://www.ecoswiftbank.com,https://ecoswiftbank.com,https://ecoswift-platform-admin.vercel.app
+        value: https://www.ecoswiftbank.com,https://ecoswiftbank.com,https://admin.ecoswiftbank.com,https://ecoswift-platform-admin.vercel.app
 
 services:
   - type: web
