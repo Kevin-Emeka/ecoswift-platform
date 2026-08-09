@@ -1213,7 +1213,7 @@ function TransferReceiptDialog({
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
-  const { content, isLoading, handleDownload } = useReceipt(transactionId, open);
+  const { content, isLoading, isError, handleDownload } = useReceipt(transactionId, open);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1223,7 +1223,11 @@ function TransferReceiptDialog({
           <DialogTitle>Transfer receipt</DialogTitle>
         </DialogHeader>
 
-        {isLoading || !content ? (
+        {isError ? (
+          <p className="rounded-xl border border-border p-4 text-center text-sm text-muted-foreground">
+            Couldn&apos;t load this receipt right now. Please try again in a moment.
+          </p>
+        ) : isLoading || !content ? (
           <div className="space-y-3 py-4">
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-40 rounded-xl" />
