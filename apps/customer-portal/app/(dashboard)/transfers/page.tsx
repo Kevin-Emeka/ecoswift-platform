@@ -1176,7 +1176,7 @@ function useReceipt(transactionId: string, enabled: boolean) {
     queryKey: ['receipt', transactionId],
     queryFn: () => getReceiptForTransaction(accessToken!, transactionId),
     enabled: enabled && !!accessToken,
-    retry: 6,
+    retry: 3,
     retryDelay: 1000,
   });
 
