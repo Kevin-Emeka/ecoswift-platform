@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Ban,
   CalendarClock,
+  CheckCircle2,
   Download,
   Landmark,
   Printer,
@@ -61,6 +62,7 @@ import {
 import { useAuth } from '../../../lib/auth/auth-context';
 import { listCountries } from '../../../lib/api/reference-data';
 import { getReceiptDownloadUrl, getReceiptForTransaction } from '../../../lib/api/receipts';
+import type { ReceiptContent } from '../../../lib/api/receipts';
 import { downloadAuthenticated } from '../../../lib/api/download';
 import { formatMoney, formatDateTime } from '../../../lib/format';
 import { ApiClientError } from '../../../lib/api/http-client';
@@ -232,6 +234,7 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
   const transfer = useInternalTransfer();
   const { toast } = useToast();
   const mfaGate = useMfaGate<InternalTransferForm>();
+  const [completedTransactionId, setCompletedTransactionId] = React.useState<string | null>(null);
 
   const form = useForm<InternalTransferForm>({
     resolver: zodResolver(internalTransferSchema),
@@ -249,19 +252,6 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
   async function submitTransfer(values: InternalTransferForm, mfaCode?: string) {
     try {
       const result = await transfer.mutateAsync({ ...values, mfaCode });
-      if (result.status === 'PENDING') {
-        toast({
-          title: 'Submitted for review',
-          description:
-            'This transfer was flagged for extra verification and needs staff approval before it completes.',
-        });
-      } else {
-        toast({
-          title: 'Transfer completed',
-          description: `${formatMoney(result.amount, result.currencyCode)} moved successfully. Reference ${result.transactionReference}.`,
-          variant: 'success',
-        });
-      }
       mfaGate.reset();
       form.reset({
         sourceAccountId: values.sourceAccountId,
@@ -269,6 +259,15 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
         amount: undefined,
         description: '',
       });
+      if (result.status === 'PENDING') {
+        toast({
+          title: 'Submitted for review',
+          description:
+            'This transfer was flagged for extra verification and needs staff approval before it completes.',
+        });
+      } else {
+        setCompletedTransactionId(result.id);
+      }
     } catch (error) {
       if (error instanceof ApiClientError && error.code === 'MFA_REQUIRED') {
         mfaGate.requestStepUp(values);
@@ -280,6 +279,15 @@ function InternalTransferForm({ accounts }: { accounts: Account[] }) {
         variant: 'destructive',
       });
     }
+  }
+
+  if (completedTransactionId) {
+    return (
+      <TransferSuccessCard
+        transactionId={completedTransactionId}
+        onDone={() => setCompletedTransactionId(null)}
+      />
+    );
   }
 
   if (mfaGate.pendingValues) {
@@ -427,6 +435,7 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
   const transfer = useExternalTransfer();
   const { toast } = useToast();
   const mfaGate = useMfaGate<ExternalTransferForm>();
+  const [completedTransactionId, setCompletedTransactionId] = React.useState<string | null>(null);
   const { data: countries } = useQuery({ queryKey: ['countries'], queryFn: listCountries });
   const countryOptions = React.useMemo(
     () => (countries ?? []).map((c) => ({ value: c.isoCode, label: c.name, keywords: c.isoCode })),
@@ -463,19 +472,6 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
         currencyCode: sourceAccount.currencyCode,
         mfaCode,
       });
-      if (result.status === 'PENDING') {
-        toast({
-          title: 'Submitted for review',
-          description:
-            'This transfer was flagged for extra verification and needs staff approval before it completes.',
-        });
-      } else {
-        toast({
-          title: 'Wire transfer completed',
-          description: `${formatMoney(result.amount, result.currencyCode)} sent. Reference ${result.transactionReference}.`,
-          variant: 'success',
-        });
-      }
       mfaGate.reset();
       form.reset({
         sourceAccountId: values.sourceAccountId,
@@ -489,6 +485,15 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
         amount: undefined,
         description: '',
       });
+      if (result.status === 'PENDING') {
+        toast({
+          title: 'Submitted for review',
+          description:
+            'This transfer was flagged for extra verification and needs staff approval before it completes.',
+        });
+      } else {
+        setCompletedTransactionId(result.id);
+      }
     } catch (error) {
       if (error instanceof ApiClientError && error.code === 'MFA_REQUIRED') {
         mfaGate.requestStepUp(values);
@@ -500,6 +505,15 @@ function ExternalTransferForm({ accounts }: { accounts: Account[] }) {
         variant: 'destructive',
       });
     }
+  }
+
+  if (completedTransactionId) {
+    return (
+      <TransferSuccessCard
+        transactionId={completedTransactionId}
+        onDone={() => setCompletedTransactionId(null)}
+      />
+    );
   }
 
   if (mfaGate.pendingValues) {
@@ -1094,38 +1108,84 @@ function ReceiptRow({ label, value, strong }: { label: string; value?: string; s
 }
 
 /**
- * Full receipt, viewable without leaving the dashboard — fetches the same
- * JSON `Receipt.content` snapshot the emailed/PDF receipts render from (see
- * ReceiptGeneratorService), so all three surfaces (email, PDF, in-app) never
- * drift out of sync with each other. Print uses a scoped `@media print`
- * rule (`.receipt-print-area`) rather than `window.print()` on the whole
- * page, so what prints is just the receipt, not the dashboard chrome
- * sitting behind the dialog overlay.
+ * Pure presentational receipt body — shared by `TransferReceiptDialog`
+ * (past transfers, clicked from the list) and `TransferSuccessCard`
+ * (right after a transfer completes), so the two surfaces can never
+ * drift out of appearance with each other. `.receipt-print-area` is a
+ * global `@media print` rule (globals.css) that hides everything else
+ * on the page when printing.
  */
-function TransferReceiptDialog({
-  transactionId,
-  trigger,
-}: {
-  transactionId: string;
-  trigger: React.ReactNode;
-}) {
-  const [open, setOpen] = React.useState(false);
+function ReceiptDetails({ content }: { content: ReceiptContent }) {
+  const beneficiaryBankAddress = [
+    content.beneficiaryBankAddress,
+    content.beneficiaryBankCountryCode,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  return (
+    <div className="receipt-print-area space-y-4 text-sm">
+      <div className="rounded-xl bg-brand-gradient p-5 text-center text-white">
+        <p className="text-xs uppercase tracking-wide text-white/60">Amount</p>
+        <p className="mt-1 text-3xl font-bold">
+          {formatMoney(content.amount, content.currencyCode)}
+        </p>
+        <div className="mt-2">
+          <StatusBadge status={content.status} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border p-4">
+        <ReceiptRow label="Receipt number" value={content.receiptReference} strong />
+        <ReceiptRow label="Transfer reference" value={content.transactionReference} />
+        <ReceiptRow label="Date & time" value={formatDateTime(content.transactionCreatedAt)} />
+        <ReceiptRow label="Sender" value={content.senderName ?? content.sourceAccountNumber} />
+        <ReceiptRow
+          label="Recipient"
+          value={content.recipientName ?? content.destinationAccountNumber}
+        />
+        <ReceiptRow label="Purpose" value={content.description} />
+      </div>
+
+      {content.beneficiaryBankName && (
+        <div className="rounded-xl border border-border p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Beneficiary bank
+          </p>
+          <ReceiptRow label="Bank name" value={content.beneficiaryBankName} />
+          <ReceiptRow label="SWIFT / BIC" value={content.beneficiarySwiftBic} />
+          <ReceiptRow label="Bank address" value={beneficiaryBankAddress} />
+          <ReceiptRow label="Routing / sort code" value={content.beneficiaryRoutingNumber} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Shared receipt-fetch + download logic behind both receipt surfaces. */
+function useReceipt(transactionId: string, enabled: boolean) {
   const { accessToken } = useAuth();
   const { toast } = useToast();
 
-  const { data: receipt, isLoading } = useQuery({
+  // The receipt is generated asynchronously off a queue (ReceiptWorker),
+  // not in the same request that completes the transfer — so it may not
+  // exist yet the instant this mounts. Retry a handful of times rather
+  // than surfacing a 404 as a hard error for what's normally a sub-second
+  // race.
+  const query = useQuery({
     queryKey: ['receipt', transactionId],
     queryFn: () => getReceiptForTransaction(accessToken!, transactionId),
-    enabled: open && !!accessToken,
+    enabled: enabled && !!accessToken,
+    retry: 6,
+    retryDelay: 1000,
   });
-  const content = receipt?.content;
 
   async function handleDownload() {
     try {
       await downloadAuthenticated(
         getReceiptDownloadUrl(transactionId),
         accessToken!,
-        `receipt-${receipt?.referenceNumber ?? transactionId}.pdf`,
+        `receipt-${query.data?.referenceNumber ?? transactionId}.pdf`,
       );
     } catch (error) {
       toast({
@@ -1136,11 +1196,24 @@ function TransferReceiptDialog({
     }
   }
 
-  const beneficiaryBankAddress = content
-    ? [content.beneficiaryBankAddress, content.beneficiaryBankCountryCode]
-        .filter(Boolean)
-        .join(', ')
-    : undefined;
+  return { ...query, content: query.data?.content, handleDownload };
+}
+
+/**
+ * Full receipt, viewable without leaving the dashboard — fetches the same
+ * JSON `Receipt.content` snapshot the emailed/PDF receipts render from (see
+ * ReceiptGeneratorService), so all three surfaces (email, PDF, in-app) never
+ * drift out of sync with each other.
+ */
+function TransferReceiptDialog({
+  transactionId,
+  trigger,
+}: {
+  transactionId: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const { content, isLoading, handleDownload } = useReceipt(transactionId, open);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1156,47 +1229,7 @@ function TransferReceiptDialog({
             <Skeleton className="h-40 rounded-xl" />
           </div>
         ) : (
-          <div className="receipt-print-area space-y-4 py-2 text-sm">
-            <div className="rounded-xl bg-brand-gradient p-5 text-center text-white">
-              <p className="text-xs uppercase tracking-wide text-white/60">Amount</p>
-              <p className="mt-1 text-3xl font-bold">
-                {formatMoney(content.amount, content.currencyCode)}
-              </p>
-              <div className="mt-2">
-                <StatusBadge status={content.status} />
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border p-4">
-              <ReceiptRow label="Receipt number" value={content.receiptReference} strong />
-              <ReceiptRow label="Transfer reference" value={content.transactionReference} />
-              <ReceiptRow
-                label="Date & time"
-                value={formatDateTime(content.transactionCreatedAt)}
-              />
-              <ReceiptRow
-                label="Sender"
-                value={content.senderName ?? content.sourceAccountNumber}
-              />
-              <ReceiptRow
-                label="Recipient"
-                value={content.recipientName ?? content.destinationAccountNumber}
-              />
-              <ReceiptRow label="Purpose" value={content.description} />
-            </div>
-
-            {content.beneficiaryBankName && (
-              <div className="rounded-xl border border-border p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Beneficiary bank
-                </p>
-                <ReceiptRow label="Bank name" value={content.beneficiaryBankName} />
-                <ReceiptRow label="SWIFT / BIC" value={content.beneficiarySwiftBic} />
-                <ReceiptRow label="Bank address" value={beneficiaryBankAddress} />
-                <ReceiptRow label="Routing / sort code" value={content.beneficiaryRoutingNumber} />
-              </div>
-            )}
-          </div>
+          <ReceiptDetails content={content} />
         )}
 
         <DialogFooter className="gap-2 sm:justify-between">
@@ -1214,6 +1247,63 @@ function TransferReceiptDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Shown in place of the transfer form immediately after a transfer
+ * completes — "Transfer successful" plus the same full receipt used
+ * elsewhere, so the customer never has to go hunting in transaction
+ * history to see what just happened or to grab a copy.
+ */
+function TransferSuccessCard({
+  transactionId,
+  onDone,
+}: {
+  transactionId: string;
+  onDone: () => void;
+}) {
+  const { content, isLoading, isError, handleDownload } = useReceipt(transactionId, true);
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-6">
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
+            <CheckCircle2 className="h-6 w-6" />
+          </span>
+          <h2 className="text-lg font-semibold">Transfer successful</h2>
+          <p className="text-sm text-muted-foreground">
+            Your money is on its way. Here&apos;s your receipt.
+          </p>
+        </div>
+
+        {isLoading || !content ? (
+          isError ? (
+            <p className="rounded-xl border border-border p-4 text-center text-sm text-muted-foreground">
+              Your transfer completed, but the receipt is still being prepared — find it any time
+              under Recent transfers below.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+            </div>
+          )
+        ) : (
+          <ReceiptDetails content={content} />
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onDone}>
+            Make another transfer
+          </Button>
+          <Button type="button" onClick={handleDownload} disabled={!content}>
+            <Download className="h-4 w-4" /> Download receipt
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
