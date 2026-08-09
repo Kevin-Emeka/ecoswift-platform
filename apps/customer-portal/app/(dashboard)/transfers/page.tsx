@@ -1245,7 +1245,11 @@ function TransferReceiptDialog({
           >
             <Printer className="h-4 w-4" /> Print
           </Button>
-          <Button type="button" onClick={handleDownload} disabled={!content}>
+          {/* Download hits a separate PDF endpoint, not the JSON preview
+              above — it can succeed (or fail with its own clear error) even
+              when the in-app preview couldn't load, so it isn't gated on
+              `content`. */}
+          <Button type="button" onClick={handleDownload}>
             <Download className="h-4 w-4" /> Download PDF
           </Button>
         </DialogFooter>
@@ -1302,7 +1306,10 @@ function TransferSuccessCard({
           <Button type="button" variant="outline" onClick={onDone}>
             Make another transfer
           </Button>
-          <Button type="button" onClick={handleDownload} disabled={!content}>
+          {/* See TransferReceiptDialog's identical comment — download is a
+              separate endpoint from the JSON preview, so it isn't gated on
+              `content`. */}
+          <Button type="button" onClick={handleDownload}>
             <Download className="h-4 w-4" /> Download receipt
           </Button>
         </div>
