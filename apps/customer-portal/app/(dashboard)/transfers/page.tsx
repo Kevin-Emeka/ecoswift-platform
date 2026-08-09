@@ -6,7 +6,16 @@ import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowRight, Ban, CalendarClock, Landmark, Repeat, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Ban,
+  CalendarClock,
+  Download,
+  Landmark,
+  Printer,
+  Repeat,
+  ShieldCheck,
+} from 'lucide-react';
 import {
   Alert,
   AlertDescription,
@@ -16,6 +25,12 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Label,
   Select,
@@ -43,7 +58,10 @@ import {
   useCreateScheduledTransfer,
   useScheduledTransfers,
 } from '../../../lib/hooks/use-scheduled-transfers';
+import { useAuth } from '../../../lib/auth/auth-context';
 import { listCountries } from '../../../lib/api/reference-data';
+import { getReceiptDownloadUrl, getReceiptForTransaction } from '../../../lib/api/receipts';
+import { downloadAuthenticated } from '../../../lib/api/download';
 import { formatMoney, formatDateTime } from '../../../lib/format';
 import { ApiClientError } from '../../../lib/api/http-client';
 import type { Account } from '../../../lib/api/accounts';
@@ -1062,6 +1080,143 @@ function ScheduledTransfersPanel({ accounts }: { accounts: Account[] }) {
   );
 }
 
+/** One labeled row inside the receipt dialog — skipped entirely when `value` is empty/undefined. */
+function ReceiptRow({ label, value, strong }: { label: string; value?: string; strong?: boolean }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between border-b border-border/60 py-2 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={strong ? 'font-semibold text-foreground' : 'font-medium text-foreground'}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Full receipt, viewable without leaving the dashboard — fetches the same
+ * JSON `Receipt.content` snapshot the emailed/PDF receipts render from (see
+ * ReceiptGeneratorService), so all three surfaces (email, PDF, in-app) never
+ * drift out of sync with each other. Print uses a scoped `@media print`
+ * rule (`.receipt-print-area`) rather than `window.print()` on the whole
+ * page, so what prints is just the receipt, not the dashboard chrome
+ * sitting behind the dialog overlay.
+ */
+function TransferReceiptDialog({
+  transactionId,
+  trigger,
+}: {
+  transactionId: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const { accessToken } = useAuth();
+  const { toast } = useToast();
+
+  const { data: receipt, isLoading } = useQuery({
+    queryKey: ['receipt', transactionId],
+    queryFn: () => getReceiptForTransaction(accessToken!, transactionId),
+    enabled: open && !!accessToken,
+  });
+  const content = receipt?.content;
+
+  async function handleDownload() {
+    try {
+      await downloadAuthenticated(
+        getReceiptDownloadUrl(transactionId),
+        accessToken!,
+        `receipt-${receipt?.referenceNumber ?? transactionId}.pdf`,
+      );
+    } catch (error) {
+      toast({
+        title: 'Could not download receipt',
+        description: error instanceof ApiClientError ? error.message : undefined,
+        variant: 'destructive',
+      });
+    }
+  }
+
+  const beneficiaryBankAddress = content
+    ? [content.beneficiaryBankAddress, content.beneficiaryBankCountryCode]
+        .filter(Boolean)
+        .join(', ')
+    : undefined;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Transfer receipt</DialogTitle>
+        </DialogHeader>
+
+        {isLoading || !content ? (
+          <div className="space-y-3 py-4">
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-40 rounded-xl" />
+          </div>
+        ) : (
+          <div className="receipt-print-area space-y-4 py-2 text-sm">
+            <div className="rounded-xl bg-brand-gradient p-5 text-center text-white">
+              <p className="text-xs uppercase tracking-wide text-white/60">Amount</p>
+              <p className="mt-1 text-3xl font-bold">
+                {formatMoney(content.amount, content.currencyCode)}
+              </p>
+              <div className="mt-2">
+                <StatusBadge status={content.status} />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border p-4">
+              <ReceiptRow label="Receipt number" value={content.receiptReference} strong />
+              <ReceiptRow label="Transfer reference" value={content.transactionReference} />
+              <ReceiptRow
+                label="Date & time"
+                value={formatDateTime(content.transactionCreatedAt)}
+              />
+              <ReceiptRow
+                label="Sender"
+                value={content.senderName ?? content.sourceAccountNumber}
+              />
+              <ReceiptRow
+                label="Recipient"
+                value={content.recipientName ?? content.destinationAccountNumber}
+              />
+              <ReceiptRow label="Purpose" value={content.description} />
+            </div>
+
+            {content.beneficiaryBankName && (
+              <div className="rounded-xl border border-border p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Beneficiary bank
+                </p>
+                <ReceiptRow label="Bank name" value={content.beneficiaryBankName} />
+                <ReceiptRow label="SWIFT / BIC" value={content.beneficiarySwiftBic} />
+                <ReceiptRow label="Bank address" value={beneficiaryBankAddress} />
+                <ReceiptRow label="Routing / sort code" value={content.beneficiaryRoutingNumber} />
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => window.print()}
+            disabled={!content}
+          >
+            <Printer className="h-4 w-4" /> Print
+          </Button>
+          <Button type="button" onClick={handleDownload} disabled={!content}>
+            <Download className="h-4 w-4" /> Download PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function RecentTransfers({ accountIds }: { accountIds: string[] }) {
   // Recent-transfers preview reuses the first active account's transaction
   // history (already includes both legs of any transfer touching it) rather
@@ -1080,21 +1235,27 @@ function RecentTransfers({ accountIds }: { accountIds: string[] }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {transfers.slice(0, 10).map((t) => (
-          <div
+          <TransferReceiptDialog
             key={t.id}
-            className="flex items-center justify-between rounded-xl border border-border p-3 text-sm"
-          >
-            <div>
-              <p className="font-medium text-foreground">{t.description ?? 'Transfer'}</p>
-              <p className="text-xs text-muted-foreground">
-                {t.transactionReference} · {formatDateTime(t.createdAt)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{formatMoney(t.amount, t.currencyCode)}</span>
-              <StatusBadge status={t.status} />
-            </div>
-          </div>
+            transactionId={t.id}
+            trigger={
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left text-sm transition-colors hover:border-brand-accent/30 hover:bg-accent"
+              >
+                <div>
+                  <p className="font-medium text-foreground">{t.description ?? 'Transfer'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.transactionReference} · {formatDateTime(t.createdAt)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{formatMoney(t.amount, t.currencyCode)}</span>
+                  <StatusBadge status={t.status} />
+                </div>
+              </button>
+            }
+          />
         ))}
       </CardContent>
     </Card>

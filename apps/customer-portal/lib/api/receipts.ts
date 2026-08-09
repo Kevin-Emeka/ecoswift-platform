@@ -15,6 +15,12 @@ export interface ReceiptContent {
   description?: string;
   sandbox: boolean;
   transactionCreatedAt: string;
+  // Wire transfers only — see ReceiptGeneratorService's doc comment.
+  beneficiaryBankName?: string;
+  beneficiarySwiftBic?: string;
+  beneficiaryBankAddress?: string;
+  beneficiaryBankCountryCode?: string;
+  beneficiaryRoutingNumber?: string;
 }
 
 export interface Receipt {
@@ -26,7 +32,9 @@ export interface Receipt {
 }
 
 export function getReceiptForTransaction(accessToken: string, transactionId: string) {
-  return apiRequest<Receipt>(API_URLS.receipt, `/v1/receipts/transaction/${transactionId}`, { accessToken });
+  return apiRequest<Receipt>(API_URLS.receipt, `/v1/receipts/transaction/${transactionId}`, {
+    accessToken,
+  });
 }
 
 export function listReceipts(accessToken: string) {
