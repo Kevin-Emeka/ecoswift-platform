@@ -199,10 +199,6 @@ const PRICING_TEASER = [
 
 const FAQ_TEASER = [
   {
-    q: 'Is this a real, licensed bank?',
-    a: `${BRANDING.brandName} is a demonstration project built to showcase modern banking UX and architecture — it isn't a chartered or licensed financial institution. See our Terms of Service for details.`,
-  },
-  {
     q: 'Can I open more than one account?',
     a: 'Yes — open as many accounts as you like across Checking, Savings, Business, Student, and Joint account types.',
   },

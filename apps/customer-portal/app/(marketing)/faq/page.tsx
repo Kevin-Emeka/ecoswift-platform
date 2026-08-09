@@ -3,7 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge, Input, cn } from '@ecoswift/ui';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Input,
+  cn,
+} from '@ecoswift/ui';
 import { BRANDING } from '@ecoswift/config/branding';
 
 interface Faq {
@@ -19,13 +27,6 @@ const FAQS: Faq[] = [
     question: `What is ${BRANDING.brandName}?`,
     answer: `${BRANDING.brandName} is a full-stack digital banking platform, built with a production-oriented architecture — account opening, a real double-entry ledger, security controls, and admin tooling — designed to show what a modern digital bank looks like end to end.`,
     keywords: 'what is ecoswift about platform',
-  },
-  {
-    category: 'General',
-    question: 'Is this a real, licensed bank?',
-    answer:
-      `${BRANDING.brandName} is a demonstration platform that showcases the architecture, workflows, and controls of a modern digital bank — account opening, a real double-entry ledger, security tooling, and admin/compliance views, all built to production standards. It is not a chartered or licensed financial institution: it isn't connected to any banking network, card network, or payment rail, and no real funds are ever moved or held. Full details are in our Terms of Service.`,
-    keywords: 'real money deposit withdraw funds bank licensed',
   },
   {
     category: 'Accounts',
@@ -75,11 +76,17 @@ const FAQS: Faq[] = [
     answer: (
       <>
         Visit the{' '}
-        <Link href="/contact" className="font-medium text-brand-accent underline-offset-4 hover:underline">
+        <Link
+          href="/contact"
+          className="font-medium text-brand-accent underline-offset-4 hover:underline"
+        >
           Contact page
         </Link>{' '}
         to send us a message, or email us directly at{' '}
-        <a href={`mailto:${BRANDING.emails.support}`} className="font-medium text-brand-accent underline-offset-4 hover:underline">
+        <a
+          href={`mailto:${BRANDING.emails.support}`}
+          className="font-medium text-brand-accent underline-offset-4 hover:underline"
+        >
           {BRANDING.emails.support}
         </a>
         .
@@ -106,10 +113,16 @@ export default function FaqPage() {
     <section className="mx-auto max-w-3xl px-4 py-20 md:px-6 md:py-28">
       <div className="text-center">
         <Badge variant="brand">FAQ</Badge>
-        <h1 className="mt-6 text-4xl font-bold tracking-tight md:text-5xl">Frequently asked questions</h1>
+        <h1 className="mt-6 text-4xl font-bold tracking-tight md:text-5xl">
+          Frequently asked questions
+        </h1>
         <p className="mt-6 text-lg text-muted-foreground">
-          Answers about how {BRANDING.brandName} works. If you don&apos;t see what you&apos;re looking for,{' '}
-          <Link href="/contact" className="font-medium text-brand-accent underline-offset-4 hover:underline">
+          Answers about how {BRANDING.brandName} works. If you don&apos;t see what you&apos;re
+          looking for,{' '}
+          <Link
+            href="/contact"
+            className="font-medium text-brand-accent underline-offset-4 hover:underline"
+          >
             get in touch
           </Link>
           .
@@ -155,7 +168,9 @@ export default function FaqPage() {
       </Accordion>
 
       {filtered.length === 0 && (
-        <p className="mt-10 text-center text-sm text-muted-foreground">No questions match &ldquo;{query}&rdquo;.</p>
+        <p className="mt-10 text-center text-sm text-muted-foreground">
+          No questions match &ldquo;{query}&rdquo;.
+        </p>
       )}
     </section>
   );
