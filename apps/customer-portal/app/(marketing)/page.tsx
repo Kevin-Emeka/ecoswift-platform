@@ -226,9 +226,13 @@ export default function HomePage() {
           }}
           aria-hidden="true"
         />
-        <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-[280px] w-full opacity-80 md:h-[360px]" />
+        <SkylineSilhouette className="pointer-events-none absolute inset-x-0 bottom-0 h-[280px] w-full opacity-30 md:h-[360px]" />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0B1F4D] to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[280px] bg-gradient-to-t from-[#0B1F4D] via-[#0B1F4D]/70 to-transparent md:h-[360px]"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-blue-400/20 blur-[120px]"
           aria-hidden="true"
         />
 
