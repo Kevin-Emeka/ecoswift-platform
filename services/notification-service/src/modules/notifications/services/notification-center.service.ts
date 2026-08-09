@@ -17,14 +17,22 @@ import type { NotificationResponseDto } from '../dto/notification-response.dto';
 export class NotificationCenterService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(userId: string, query: ListNotificationsQueryDto): Promise<PaginatedResult<NotificationResponseDto>> {
+  async list(
+    userId: string,
+    query: ListNotificationsQueryDto,
+  ): Promise<PaginatedResult<NotificationResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where = { recipientUserId: userId, ...(query.unreadOnly ? { readAt: null } : {}) };
 
     const [total, notifications] = await Promise.all([
       this.prisma.notification.count({ where }),
-      this.prisma.notification.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.notification.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     return {
@@ -41,7 +49,9 @@ export class NotificationCenterService {
   }
 
   async markRead(userId: string, notificationId: string): Promise<NotificationResponseDto> {
-    const notification = await this.prisma.notification.findUnique({ where: { id: notificationId } });
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
@@ -51,7 +61,10 @@ export class NotificationCenterService {
 
     const updated = await this.prisma.notification.update({
       where: { id: notificationId },
-      data: { readAt: notification.readAt ?? new Date(), status: notification.status === 'FAILED' ? notification.status : 'READ' },
+      data: {
+        readAt: notification.readAt ?? new Date(),
+        status: notification.status === 'FAILED' ? notification.status : 'READ',
+      },
     });
     return this.toResponseDto(updated);
   }
@@ -80,9 +93,37 @@ export class NotificationCenterService {
       priority: notification.priority,
       status: notification.status,
       subject: notification.renderedSubject ?? undefined,
-      body: notification.renderedBody ?? undefined,
+      body: notification.renderedBody
+        ? notification.channel === 'EMAIL'
+          ? this.toPlainTextPreview(notification.renderedBody)
+          : notification.renderedBody
+        : undefined,
       createdAt: notification.createdAt.toISOString(),
       readAt: notification.readAt?.toISOString(),
     };
+  }
+
+  /**
+   * EMAIL notifications store the full rendered HTML template in
+   * `renderedBody` (see AuthNotificationService/AccountNotificationService) —
+   * fine as the source of truth for what was actually sent, but the
+   * notification center is a list of short summaries, not an inline email
+   * client. Strips tags/entities down to a single-line, truncated preview.
+   * SMS/PUSH/IN_APP bodies are already plain text and pass through as-is.
+   */
+  private toPlainTextPreview(html: string, maxLength = 180): string {
+    const text = html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/gi, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.length > maxLength ? `${text.slice(0, maxLength).trimEnd()}…` : text;
   }
 }
