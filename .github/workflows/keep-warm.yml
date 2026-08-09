@@ -1,0 +1,46 @@
+name: Keep backend services warm
+
+# Render's free web-service tier spins an instance down after ~15 minutes
+# idle; the next request then eats a 30-60s cold start while it wakes back
+# up. That's shown up repeatedly as "lagging"/"stuck loading"/"no email
+# received" reports against whichever of the 7 services happened to be
+# asleep. Pinging every service's health endpoint on a schedule well under
+# that 15-minute window keeps all of them warm continuously.
+#
+# Runs on GitHub Actions rather than Render's own Cron Jobs because this is
+# a public repo — scheduled workflow minutes are free and unlimited here,
+# whereas Render Cron Jobs are a paid feature. GitHub may pause scheduled
+# workflows after 60 days with no repository activity; a "Run workflow"
+# click on this workflow (Actions tab) re-arms it if that ever happens.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    name: Ping health endpoints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping every Render service
+        run: |
+          services=(
+            "ecoswift-auth-service"
+            "ecoswift-account-service"
+            "ecoswift-notification-service"
+            "ecoswift-receipt-service"
+            "ecoswift-audit-service"
+            "ecoswift-email-service"
+            "ecoswift-sms-service"
+          )
+          status=0
+          for service in "${services[@]}"; do
+            url="https://${service}.onrender.com/v1/health"
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$url" || echo "000")
+            echo "$service -> HTTP $code"
+            if [ "$code" != "200" ]; then
+              status=1
+            fi
+          done
+          exit $status
