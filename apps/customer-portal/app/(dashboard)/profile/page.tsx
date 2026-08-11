@@ -16,6 +16,11 @@ import {
   CardTitle,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   useToast,
 } from '@ecoswift/ui';
@@ -48,10 +53,16 @@ export default function ProfilePage() {
     addressCountryCode: '',
     occupation: '',
     timezone: '',
+    preferredCurrencyId: '',
   });
 
   React.useEffect(() => {
     if (profile) {
+      // The profile GET only returns the currency's ISO code, not its id
+      // (which is what the update endpoint needs) — resolve it against the
+      // fetched currency list once both are available.
+      const matchingCurrencyId =
+        currencies?.find((c) => c.isoCode === profile.preferredCurrencyCode)?.id ?? '';
       setForm({
         addressLine1: profile.addressLine1 ?? '',
         addressLine2: profile.addressLine2 ?? '',
@@ -61,9 +72,10 @@ export default function ProfilePage() {
         addressCountryCode: profile.addressCountryCode ?? '',
         occupation: profile.occupation ?? '',
         timezone: profile.timezone ?? '',
+        preferredCurrencyId: matchingCurrencyId,
       });
     }
-  }, [profile]);
+  }, [profile, currencies]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -225,11 +237,24 @@ export default function ProfilePage() {
                 onChange={(e) => setForm({ ...form, timezone: e.target.value })}
               />
             </div>
-            {profile.preferredCurrencyCode && (
-              <p className="text-xs text-muted-foreground">
-                Preferred currency: {profile.preferredCurrencyCode}. {currencies ? '' : ''}
-              </p>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="preferredCurrencyId">Preferred currency</Label>
+              <Select
+                value={form.preferredCurrencyId}
+                onValueChange={(value) => setForm({ ...form, preferredCurrencyId: value })}
+              >
+                <SelectTrigger id="preferredCurrencyId">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(currencies ?? []).map((currency) => (
+                    <SelectItem key={currency.id} value={currency.id}>
+                      {currency.isoCode} — {currency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button type="submit" loading={updateProfile.isPending}>
               Save changes
             </Button>
