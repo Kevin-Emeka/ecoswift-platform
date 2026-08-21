@@ -57,5 +57,19 @@ export function createRedisClient(config: RedisClientConfig): Redis | Cluster {
     retryStrategy: (times) => Math.min(times * 200, 2000),
   };
 
-  return new Redis(config.url, options);
+  const client = new Redis(config.url, options);
+
+  // ioredis never surfaces the underlying connection failure (ECONNREFUSED /
+  // ENOTFOUND / auth rejection / etc.) anywhere by default — callers only
+  // ever see the generic MaxRetriesPerRequestError once retries are
+  // exhausted, with no way to tell *why* every attempt failed. Logging the
+  // client's own 'error' event to stderr (unconditionally — this fires
+  // before any app logger is necessarily wired up) makes that root cause
+  // visible in the deploy logs instead of guesswork.
+  client.on('error', (err) => {
+    // eslint-disable-next-line no-console
+    console.error('[redis] connection error:', err?.message ?? err);
+  });
+
+  return client;
 }
