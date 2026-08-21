@@ -19,6 +19,17 @@ export interface RedisClientConfig {
  */
 export function createRedisClient(config: RedisClientConfig): Redis | Cluster {
   const tls = config.tlsEnabled ? {} : undefined;
+  // `family: 0` tells Node's DNS resolution to return both A and AAAA
+  // records and connect to whichever answers (Happy Eyeballs), instead of
+  // ioredis's default `family: 4` (IPv4-only). Several hosting platforms'
+  // private networks — Railway's `*.railway.internal` among them — only
+  // publish AAAA (IPv6) records, so a hardcoded IPv4-only lookup fails
+  // immediately with no usable address, which surfaces as a fast
+  // MaxRetriesPerRequestError with no underlying DNS/connection log line
+  // to explain it. Harmless everywhere else, since dual-stack lookup still
+  // finds an IPv4 address when that's all that exists (local dev, most
+  // other Redis hosts).
+  const family = 0;
 
   if (config.clusterEnabled) {
     if (!config.clusterNodes) {
@@ -31,7 +42,7 @@ export function createRedisClient(config: RedisClientConfig): Redis | Cluster {
     });
 
     return new Redis.Cluster(nodes, {
-      redisOptions: { tls },
+      redisOptions: { tls, family },
       // Cluster reads/writes should degrade to a live replica rather than
       // fail outright when a master shard is momentarily unreachable.
       scaleReads: 'slave',
@@ -41,6 +52,7 @@ export function createRedisClient(config: RedisClientConfig): Redis | Cluster {
 
   const options: RedisOptions = {
     tls,
+    family,
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => Math.min(times * 200, 2000),
   };
