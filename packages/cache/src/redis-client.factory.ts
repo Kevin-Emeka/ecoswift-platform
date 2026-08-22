@@ -19,17 +19,16 @@ export interface RedisClientConfig {
  */
 export function createRedisClient(config: RedisClientConfig): Redis | Cluster {
   const tls = config.tlsEnabled ? {} : undefined;
-  // `family: 0` tells Node's DNS resolution to return both A and AAAA
-  // records and connect to whichever answers (Happy Eyeballs), instead of
-  // ioredis's default `family: 4` (IPv4-only). Several hosting platforms'
-  // private networks — Railway's `*.railway.internal` among them — only
-  // publish AAAA (IPv6) records, so a hardcoded IPv4-only lookup fails
-  // immediately with no usable address, which surfaces as a fast
-  // MaxRetriesPerRequestError with no underlying DNS/connection log line
-  // to explain it. Harmless everywhere else, since dual-stack lookup still
-  // finds an IPv4 address when that's all that exists (local dev, most
-  // other Redis hosts).
-  const family = 0;
+  // Explicit `family: 4` (IPv4-only), not ioredis's dual-stack default of
+  // `family: 0`. On Railway's private network (`*.railway.internal`),
+  // dual-stack lookup racing both A and AAAA records has been observed to
+  // pick a black-holed IPv6 route for some services and hang until
+  // `connectTimeout` instead of falling back to the working IPv4 address —
+  // surfacing as a slow ETIMEDOUT with no way to tell the two routes apart
+  // from the error alone. Forcing IPv4 sidesteps the race entirely; the
+  // private network resolves an A record for every internal hostname, so
+  // this doesn't lose reachability anywhere it previously worked.
+  const family = 4;
 
   if (config.clusterEnabled) {
     if (!config.clusterNodes) {
